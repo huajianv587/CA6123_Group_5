@@ -117,7 +117,7 @@ class KnowledgeRetriever:
             use_keyword_fallback: 当 embedding 失败时，降级为关键词匹配
         """
         if documents is None:
-            from knowledge.faq_store import FAQ_DOCUMENTS
+            from .faq_store import FAQ_DOCUMENTS
             documents = FAQ_DOCUMENTS
 
         self.documents = documents

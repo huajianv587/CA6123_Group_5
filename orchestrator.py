@@ -2,6 +2,13 @@
 智能客服系统 - 中央协调器
 v2: 统一创建 KnowledgeRetriever，注入到各 Agent
 """
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 import uuid
 from typing import Dict, Optional, List
 from datetime import datetime
@@ -41,7 +48,7 @@ class CustomerServiceOrchestrator:
         # ── 初始化各 Agent（按需注入 retriever）──
         self.router = RouterAgent()
         self.order_agent = OrderAgent()
-        self.logistics_agent = LogisticsAgent(retriever=self.retriever)  # 物流规则 RAG
+        self.logistics_agent = LogisticsAgent()
         self.refund_agent = RefundAgent(retriever=self.retriever)         # 退款规则 RAG
         self.complaint_agent = ComplaintAgent()                           # 暂不注入
 
