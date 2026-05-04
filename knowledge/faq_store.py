@@ -1,0 +1,58 @@
+FAQ_DOCUMENTS = [
+    {
+        "id": "refund_quality",
+        "category": "refund",
+        "question": "质量问题如何退款？",
+        "answer": "商品存在故障、破损、瑕疵等质量问题时，支持退款或换货，运费由商家承担。建议提交照片或视频作为凭证。",
+        "keywords": ["质量", "故障", "破损", "坏了", "瑕疵"],
+    },
+    {
+        "id": "refund_seven_day",
+        "category": "refund",
+        "question": "七天无理由退款规则是什么？",
+        "answer": "签收后 7 天内，商品未影响二次销售时可申请七天无理由退货。非质量问题的退货运费通常由买家承担。",
+        "keywords": ["七天", "无理由", "不想要", "不喜欢", "退货"],
+    },
+    {
+        "id": "refund_time",
+        "category": "refund",
+        "question": "退款多久到账？",
+        "answer": "退款申请提交后通常 1-3 个工作日审核，审核通过后 3-7 个工作日原路退回。",
+        "keywords": ["多久到账", "几天", "退款时间", "审核"],
+    },
+    {
+        "id": "logistics_signed_missing",
+        "category": "logistics",
+        "question": "物流显示签收但没有收到怎么办？",
+        "answer": "请先确认家人、同事、门卫或驿站是否代收；若仍未找到，可联系承运商核查签收凭证，并由客服协助发起调查。",
+        "keywords": ["签收", "没收到", "代收", "驿站"],
+    },
+    {
+        "id": "logistics_stalled",
+        "category": "logistics",
+        "question": "物流长时间没有更新怎么办？",
+        "answer": "物流 48 小时未更新可能是中转延迟、天气或节假日影响。超过 5 个工作日仍无更新，可申请物流调查、补发或退款处理。",
+        "keywords": ["没更新", "不动", "停滞", "延迟"],
+    },
+    {
+        "id": "order_address",
+        "category": "order",
+        "question": "订单可以修改收货地址吗？",
+        "answer": "待发货订单通常可以修改地址；已发货订单需联系承运商拦截或改派，成功率不保证。",
+        "keywords": ["改地址", "修改地址", "收货地址"],
+    },
+    {
+        "id": "complaint_escalation",
+        "category": "complaint",
+        "question": "哪些投诉需要升级人工？",
+        "answer": "涉及强烈情绪、法律风险、媒体曝光、12315、明确要求人工或多次投诉的情况，应升级人工处理。",
+        "keywords": ["投诉", "人工", "曝光", "12315", "经理"],
+    },
+    {
+        "id": "safety_privacy",
+        "category": "safety",
+        "question": "客服如何保护用户隐私？",
+        "answer": "客服回复中应对手机号、邮箱、详细地址、订单号等敏感信息进行脱敏，不应泄露其他用户信息。",
+        "keywords": ["隐私", "手机号", "邮箱", "地址", "脱敏"],
+    },
+]

@@ -4,9 +4,19 @@ __MACOSX/
 
 __pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 venv/
 env/
 
 .env
 .env.*
+!.env.example
+
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+*.log
+*.db
