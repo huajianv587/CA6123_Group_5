@@ -1,17 +1,11 @@
-"""
-智能客服多Agent系统 - 基础Agent类
-v2: 注入 KnowledgeRetriever，支持 Agentic RAG
-"""
+import time
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 from enum import Enum
-import re
-import time
+from typing import Any, Optional
 
 
 class IntentType(Enum):
-    """意图类型枚举"""
     ORDER = "order"
     LOGISTICS = "logistics"
     REFUND = "refund"
@@ -21,16 +15,15 @@ class IntentType(Enum):
 
 @dataclass
 class Message:
-    """Agent间通信消息"""
     sender: str
     receiver: str
     intent: IntentType
     content: str
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
     session_id: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "sender": self.sender,
             "receiver": self.receiver,
@@ -44,18 +37,16 @@ class Message:
 
 @dataclass
 class AgentResponse:
-    """Agent响应结果"""
     success: bool
     message: str
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     need_escalate: bool = False
     escalate_reason: str = ""
     next_agent: Optional[str] = None
-    # ── RAG 新增字段 ──────────────────────────
-    rag_used: bool = False                   # 本次响应是否使用了 RAG
-    rag_sources: List[str] = field(default_factory=list)  # 召回的文档 ID 列表
+    rag_used: bool = False
+    rag_sources: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "message": self.message,
@@ -69,98 +60,51 @@ class AgentResponse:
 
 
 class BaseAgent(ABC):
-    """
-    Agent 基类 v2
-
-    新增 RAG 支持：
-      - __init__ 接收可选的 retriever 参数
-      - 提供 retrieve_knowledge() 便捷方法，子类按需调用
-      - 所有现有子类无需修改即可兼容（retriever 默认为 None）
-    """
-
-    def __init__(self, agent_id: str, name: str, retriever=None):
-        """
-        Args:
-            agent_id: Agent 唯一标识
-            name: Agent 显示名称
-            retriever: KnowledgeRetriever 实例（可选）。
-                       由 Orchestrator 在初始化时统一注入，Agent 内部只使用，不负责创建。
-        """
+    def __init__(self, agent_id: str, name: str, retriever=None, store=None, llm=None):
         self.agent_id = agent_id
         self.name = name
-        self.message_history: List[Message] = []
-        self._retriever = retriever  # 由外部注入，保持 Agent 轻量
-
-    # ── 核心抽象方法 ──────────────────────────
+        self._retriever = retriever
+        self.store = store
+        self.llm = llm
+        self.message_history: list[Message] = []
 
     @abstractmethod
     def process(self, message: Message) -> AgentResponse:
-        pass
-
-    # ── 消息收发 ──────────────────────────────
+        raise NotImplementedError
 
     def receive_message(self, message: Message) -> AgentResponse:
         self.message_history.append(message)
-        return self.process(message)
+        started = time.perf_counter()
+        try:
+            response = self.process(message)
+            self._record_event(message, response.success, started, None)
+            return response
+        except Exception as exc:
+            self._record_event(message, False, started, str(exc))
+            raise
 
-    def send_message(self, receiver: str, intent: IntentType,
-                     content: str, data: Dict[str, Any] = None,
-                     session_id: str = "") -> Message:
-        return Message(
-            sender=self.agent_id,
-            receiver=receiver,
-            intent=intent,
-            content=content,
-            data=data or {},
-            session_id=session_id,
-        )
-
-    # ── RAG 便捷方法 ──────────────────────────
-
-    def retrieve_knowledge(
-        self,
-        query: str,
-        top_k: int = 2,
-        category_filter: str = None,
-    ):
-        """
-        检索知识库，返回 List[RetrievalResult]。
-        若未注入 retriever，静默返回空列表，不影响现有逻辑。
-
-        Args:
-            query: 检索问题（通常为用户原始输入或关键意图）
-            top_k: 返回条数
-            category_filter: 可选，限定类别（"refund" / "logistics"）
-
-        Returns:
-            List[RetrievalResult]，未注入 retriever 时返回 []
-        """
+    def retrieve_knowledge(self, query: str, top_k: int = 3, category_filter: Optional[str] = None):
         if self._retriever is None:
             return []
-        try:
-            results = self._retriever.retrieve(
-                query, top_k=top_k, category_filter=category_filter
-            )
-            if results:
-                self.log(
-                    f"[RAG] 检索到 {len(results)} 条知识: "
-                    + ", ".join(f"{r.doc_id}({r.score:.2f})" for r in results)
-                )
-            return results
-        except Exception as e:
-            self.log(f"[RAG] 检索异常（{e}），跳过 RAG")
-            return []
+        return self._retriever.retrieve(query=query, top_k=top_k, category=category_filter)
 
-    def format_rag_context(self, results, max_chars: int = 600) -> str:
-        """
-        将检索结果格式化为上下文字符串。
-        若未注入 retriever 或结果为空，返回空字符串。
-        """
-        if not results or self._retriever is None:
+    def format_rag_context(self, results, max_chars: int = 800) -> str:
+        if self._retriever is None:
             return ""
         return self._retriever.format_context(results, max_chars=max_chars)
 
-    # ── 工具方法 ──────────────────────────────
+    def _record_event(self, message: Message, success: bool, started: float, error: Optional[str]) -> None:
+        if not self.store:
+            return
+        duration_ms = (time.perf_counter() - started) * 1000
+        self.store.add_agent_event(
+            agent=self.agent_id,
+            success=success,
+            duration_ms=duration_ms,
+            session_id=message.session_id,
+            intent=message.intent.value,
+            error=error,
+        )
 
-    def log(self, message: str):
-        print(f"[{self.name}] {message}")
+    def log(self, text: str) -> None:
+        print(f"[{self.name}] {text}")

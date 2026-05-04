@@ -1,0 +1,166 @@
+import math
+from dataclasses import dataclass
+from typing import Optional
+
+from integrations import OpenAIClient
+from knowledge.faq_store import FAQ_DOCUMENTS
+from shared import models
+
+
+@dataclass
+class RetrievalResult:
+    doc_id: str
+    chunk_id: Optional[int]
+    category: str
+    source_title: str
+    content: str
+    score: float
+
+    @property
+    def question(self) -> str:
+        return self.source_title
+
+    @property
+    def answer(self) -> str:
+        return self.content
+
+    def to_context_str(self) -> str:
+        return f"[{self.source_title}] {self.content} (score={self.score:.2f})"
+
+
+class KnowledgeRetriever:
+    def __init__(self, store=None, score_threshold: float = 0.20, llm: Optional[OpenAIClient] = None):
+        self.store = store
+        self.score_threshold = score_threshold
+        self.llm = llm or OpenAIClient()
+
+    def build_index(self) -> None:
+        return None
+
+    def retrieve(self, query: str, top_k: int = 3, category: Optional[str] = None, category_filter: Optional[str] = None) -> list[RetrievalResult]:
+        category = category or category_filter
+        if self.store:
+            results = self._db_retrieve(query, top_k=top_k, category=category)
+            if results:
+                return results
+        return self._memory_retrieve(query, top_k=top_k, category=category)
+
+    def _db_retrieve(self, query: str, top_k: int, category: Optional[str]) -> list[RetrievalResult]:
+        docs_query = self.store.db.query(models.KnowledgeDocument)
+        if category:
+            docs_query = docs_query.filter(models.KnowledgeDocument.category == category)
+        docs = docs_query.all()
+        scored = []
+        query_vec = self.llm.embed(query) if self.llm else None
+        for doc in docs:
+            chunk_rows = doc.chunks or []
+            if query_vec and chunk_rows and any(chunk.embedding for chunk in chunk_rows):
+                for chunk in chunk_rows:
+                    score = self._cosine(query_vec, chunk.embedding or [])
+                    scored.append((score, doc, chunk.content, chunk.id))
+            else:
+                haystack = f"{doc.title} {doc.content} {' '.join(doc.keywords or [])}"
+                score = self._keyword_score(query, haystack, doc.keywords or [])
+                scored.append((score, doc, doc.content, None))
+        results = [
+            RetrievalResult(doc_id=doc.doc_id, chunk_id=chunk_id, category=doc.category, source_title=doc.title, content=content, score=score)
+            for score, doc, content, chunk_id in scored
+            if score >= self.score_threshold
+        ]
+        results.extend(self._policy_rule_results(query, category))
+        results.extend(self._historical_case_results(query, category))
+        results.sort(key=lambda item: item.score, reverse=True)
+        return results[:top_k]
+
+    def _policy_rule_results(self, query: str, category: Optional[str]) -> list[RetrievalResult]:
+        if not hasattr(self.store, "list_active_policy_rules"):
+            return []
+        results = []
+        for rule in self.store.list_active_policy_rules(category=category):
+            haystack = f"{rule.title} {rule.answer} {' '.join(rule.keywords or [])} {' '.join(rule.refund_reasons or [])}"
+            score = self._keyword_score(query, haystack, rule.keywords or [])
+            if score >= self.score_threshold:
+                content = (
+                    f"{rule.answer} "
+                    f"Rule={rule.rule_id}; version={rule.rule_version}; decision={rule.decision}; "
+                    f"valid={rule.effective_from.date()}~{rule.effective_to.date() if rule.effective_to else 'open'}."
+                )
+                results.append(
+                    RetrievalResult(
+                        doc_id=rule.rule_id,
+                        chunk_id=None,
+                        category=rule.category,
+                        source_title=rule.title,
+                        content=content,
+                        score=min(1.0, score + 0.05),
+                    )
+                )
+        return results
+
+    def _historical_case_results(self, query: str, category: Optional[str]) -> list[RetrievalResult]:
+        if not hasattr(self.store, "list_historical_cases"):
+            return []
+        results = []
+        for case in self.store.list_historical_cases(category=category, limit=30):
+            haystack = f"{case.title} {case.issue_summary} {case.resolution} {' '.join(case.keywords or [])}"
+            score = self._keyword_score(query, haystack, case.keywords or [])
+            if score >= self.score_threshold:
+                content = f"历史案例：{case.issue_summary} 处理方式：{case.resolution} Outcome={case.outcome}."
+                results.append(
+                    RetrievalResult(
+                        doc_id=case.case_id,
+                        chunk_id=None,
+                        category=case.category,
+                        source_title=case.title,
+                        content=content,
+                        score=max(0.0, score - 0.03),
+                    )
+                )
+        return results
+
+    def _memory_retrieve(self, query: str, top_k: int, category: Optional[str]) -> list[RetrievalResult]:
+        scored = []
+        for doc in FAQ_DOCUMENTS:
+            if category and doc["category"] != category:
+                continue
+            haystack = f"{doc['question']} {doc['answer']} {' '.join(doc['keywords'])}"
+            score = self._keyword_score(query, haystack, doc["keywords"])
+            if score >= self.score_threshold:
+                scored.append((score, doc))
+        scored.sort(key=lambda row: row[0], reverse=True)
+        return [
+            RetrievalResult(doc_id=doc["id"], chunk_id=None, category=doc["category"], source_title=doc["question"], content=doc["answer"], score=score)
+            for score, doc in scored[:top_k]
+        ]
+
+    def format_context(self, results: list[RetrievalResult], max_chars: int = 800) -> str:
+        text = "\n".join(f"{i + 1}. {r.to_context_str()}" for i, r in enumerate(results))
+        return text[:max_chars]
+
+    def get_stats(self) -> dict:
+        if not self.store:
+            return {"source": "memory", "total_documents": len(FAQ_DOCUMENTS)}
+        total = self.store.db.query(models.KnowledgeDocument).count()
+        chunks = self.store.db.query(models.KnowledgeChunk).count()
+        policy_rules = self.store.db.query(models.PolicyRule).count()
+        historical_cases = self.store.db.query(models.HistoricalCase).count()
+        return {
+            "source": "database",
+            "total_documents": total,
+            "total_chunks": chunks,
+            "policy_rules": policy_rules,
+            "historical_cases": historical_cases,
+        }
+
+    def _keyword_score(self, query: str, text: str, keywords: list[str]) -> float:
+        hits = sum(1 for kw in keywords if kw and kw in query)
+        overlap = len(set(query) & set(text)) / max(len(set(query)), 1)
+        return min(1.0, hits * 0.35 + overlap * 0.4)
+
+    def _cosine(self, a: list[float], b: list[float]) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(y * y for y in b))
+        return dot / (norm_a * norm_b) if norm_a and norm_b else 0.0
