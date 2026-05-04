@@ -1,0 +1,40 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, "Segoe UI", Arial, sans-serif; background: #f5f6f8; color: #20242a; }
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+aside { background: #1f2933; color: #fff; padding: 20px 14px; }
+aside h1 { font-size: 20px; margin: 0 0 20px; }
+aside button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: #cbd5e1; padding: 11px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+aside button.active, aside button:hover { background: #334155; color: #fff; }
+main { padding: 24px; }
+section { max-width: 1120px; margin: 0 auto; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+header h2 { margin: 0; font-size: 22px; }
+header span { margin-left: auto; color: #64748b; font-size: 13px; }
+.chat { height: 62vh; overflow: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+.msg { max-width: 78%; margin-bottom: 12px; padding: 12px; border-radius: 8px; line-height: 1.45; white-space: pre-wrap; }
+.msg.user { margin-left: auto; background: #dbeafe; }
+.msg.assistant { background: #f1f5f9; }
+.msg small { display: block; margin-top: 8px; color: #64748b; }
+.badge { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 6px; background: #e0f2fe; color: #075985; font-weight: 600; }
+.badge.danger { background: #fee2e2; color: #991b1b; }
+.composer, .toolbar { display: flex; gap: 10px; margin-top: 12px; }
+input { flex: 1; min-height: 40px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+button { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 6px; background: #2563eb; color: white; padding: 10px 14px; cursor: pointer; }
+.panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.panel h3 { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+.panel h3 span { color: #2563eb; margin-left: 8px; }
+.row { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; }
+.grid.compact { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+.metric { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+.metric span { display: block; color: #64748b; margin-bottom: 8px; }
+.metric strong { font-size: 28px; }
+.error { color: #dc2626; }
+pre { background: #0f172a; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow: auto; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  aside { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  aside h1 { grid-column: 1 / -1; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .msg { max-width: 100%; }
+}
