@@ -23,7 +23,7 @@ def _json_request(base_url: str, method: str, path: str, body: dict[str, Any] | 
         headers["Content-Type"] = "application/json"
     request = Request(url, data=payload, headers=headers, method=method)
     try:
-        with urlopen(request, timeout=30) as response:
+        with urlopen(request, timeout=90) as response:
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else {}
     except HTTPError as exc:
@@ -31,6 +31,8 @@ def _json_request(base_url: str, method: str, path: str, body: dict[str, Any] | 
         raise SmokeFailure(f"{method} {path} returned HTTP {exc.code}: {detail}") from exc
     except URLError as exc:
         raise SmokeFailure(f"{method} {path} failed: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise SmokeFailure(f"{method} {path} timed out") from exc
 
 
 def _get(base_url: str, path: str, query: dict[str, Any] | None = None) -> Any:

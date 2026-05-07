@@ -72,6 +72,17 @@ OPENAI_CHAT_MODEL=gpt-4o-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
+Optional DeepSeek mode uses the OpenAI-compatible API through the backend only:
+
+```env
+DEEPSEEK_KEY=<deepseek-api-key>
+LLM_PROVIDER=deepseek
+LLM_BASE_URL=https://api.deepseek.com
+LLM_CHAT_MODEL=deepseek-v4-flash
+```
+
+When `DEEPSEEK_KEY` is present, chat classification and short answers use DeepSeek. Embeddings remain disabled unless a real OpenAI embedding key is configured, so RAG safely falls back to the existing keyword/database retrieval.
+
 Use local secret files only:
 
 - `.env`
