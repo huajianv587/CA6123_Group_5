@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -7,6 +8,38 @@ from agents.base_agent import AgentResponse, BaseAgent, Message
 
 
 class RefundAgent(BaseAgent):
+    POLICY_QUERY_TERMS = (
+        "\u89c4\u5219",
+        "\u653f\u7b56",
+        "\u600e\u4e48\u9000\u6b3e",
+        "\u80fd\u9000\u5417",
+        "\u53ef\u4ee5\u9000\u5417",
+        "\u80fd\u4e0d\u80fd\u9000",
+        "\u591a\u4e45\u5230\u8d26",
+        "\u8fd0\u8d39",
+        "\u65e0\u7406\u7531",
+        "refund policy",
+        "return policy",
+    )
+    REFUND_CONTEXT_TERMS = (
+        "\u9000\u6b3e",
+        "\u9000\u8d27",
+        "\u552e\u540e",
+        "\u4e03\u5929",
+        "7\u5929",
+        "\u65e0\u7406\u7531",
+        "refund",
+        "return",
+    )
+    REFUND_APPLICATION_TERMS = (
+        "\u6211\u8981",
+        "\u6211\u60f3",
+        "\u7533\u8bf7",
+        "\u5e2e\u6211\u9000",
+        "\u9000\u4e00\u4e0b",
+        "apply",
+    )
+
     def __init__(self, store=None, **kwargs):
         super().__init__("refund", "RefundAgent", store=store, **kwargs)
 
@@ -95,7 +128,15 @@ class RefundAgent(BaseAgent):
         return AgentResponse(True, "支持质量问题、错发漏发、描述不符、七天无理由等退款场景。申请退款时请提供订单号和退款原因。", data={"action": "policy_query"})
 
     def _is_policy_query(self, text: str) -> bool:
-        return not any(ch.isdigit() for ch in text) and any(k in text for k in ["规则", "政策", "能退吗", "怎么退款", "多久到账", "运费"])
+        lowered = text.lower()
+        has_policy_term = any(term in text for term in self.POLICY_QUERY_TERMS if not term.isascii())
+        has_policy_term = has_policy_term or any(term in lowered for term in self.POLICY_QUERY_TERMS if term.isascii())
+        has_refund_context = any(term in text for term in self.REFUND_CONTEXT_TERMS if not term.isascii())
+        has_refund_context = has_refund_context or any(term in lowered for term in self.REFUND_CONTEXT_TERMS if term.isascii())
+        has_order_id = bool(re.search(r"20\d{8,16}", text))
+        looks_like_application = any(term in text for term in self.REFUND_APPLICATION_TERMS if not term.isascii())
+        looks_like_application = looks_like_application or any(term in lowered for term in self.REFUND_APPLICATION_TERMS if term.isascii())
+        return has_policy_term and has_refund_context and not (has_order_id and looks_like_application)
 
     def _reason(self, text: str) -> str:
         if any(k in text for k in ["质量", "坏", "故障", "破损"]):

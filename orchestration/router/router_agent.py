@@ -10,6 +10,29 @@ class RouterAgent(BaseAgent):
     LOW_CONFIDENCE_THRESHOLD = 0.5
     AMBIGUITY_DELTA = 0.15
     LLM_OVERRIDE_THRESHOLD = 0.72
+    REFUND_POLICY_TERMS = (
+        "\u89c4\u5219",
+        "\u653f\u7b56",
+        "\u600e\u4e48\u9000\u6b3e",
+        "\u80fd\u9000\u5417",
+        "\u53ef\u4ee5\u9000\u5417",
+        "\u80fd\u4e0d\u80fd\u9000",
+        "\u591a\u4e45\u5230\u8d26",
+        "\u8fd0\u8d39",
+        "\u65e0\u7406\u7531",
+        "refund policy",
+        "return policy",
+    )
+    REFUND_CONTEXT_TERMS = (
+        "\u9000\u6b3e",
+        "\u9000\u8d27",
+        "\u552e\u540e",
+        "\u4e03\u5929",
+        "7\u5929",
+        "\u65e0\u7406\u7531",
+        "refund",
+        "return",
+    )
 
     def __init__(self, llm=None, store=None):
         super().__init__("router", "RouterAgent", llm=llm, store=store)
@@ -168,6 +191,9 @@ class RouterAgent(BaseAgent):
             matched_keywords[intent] = hits
             scores[intent] = min(len(hits) * 0.25, 0.85)
 
+        if self._looks_like_refund_policy_query(text):
+            scores[IntentType.REFUND] = max(scores[IntentType.REFUND], 0.8)
+            matched_keywords[IntentType.REFUND].append("refund_policy_query")
         if re.search(r"\b[A-Z]{2}\d{9,13}\b", text, re.I):
             scores[IntentType.LOGISTICS] += 0.6
             matched_keywords[IntentType.LOGISTICS].append("tracking_number")
@@ -200,6 +226,8 @@ class RouterAgent(BaseAgent):
 
         if any(hit.lower() in lowered for hit in complaint_hits):
             return IntentType.COMPLAINT
+        if self._looks_like_refund_policy_query(text):
+            return IntentType.REFUND
         if any(hit.lower() in lowered for hit in refund_hits):
             return IntentType.REFUND
         if entities.get("tracking_number") or any(hit.lower() in lowered for hit in logistics_hits):
@@ -241,6 +269,8 @@ class RouterAgent(BaseAgent):
         return None
 
     def _requested_action(self, text: str) -> str | None:
+        if self._looks_like_refund_policy_query(text):
+            return "policy_query"
         if any(k in text for k in ["取消", "不要了"]):
             return "cancel_order"
         if any(k in text for k in ["改地址", "修改地址", "换地址"]):
@@ -256,6 +286,14 @@ class RouterAgent(BaseAgent):
         if any(k in text for k in ["查", "看看", "查询"]):
             return "query"
         return None
+
+    def _looks_like_refund_policy_query(self, text: str) -> bool:
+        lowered = text.lower()
+        has_policy_term = any(term in text for term in self.REFUND_POLICY_TERMS if not term.isascii())
+        has_policy_term = has_policy_term or any(term in lowered for term in self.REFUND_POLICY_TERMS if term.isascii())
+        has_refund_context = any(term in text for term in self.REFUND_CONTEXT_TERMS if not term.isascii())
+        has_refund_context = has_refund_context or any(term in lowered for term in self.REFUND_CONTEXT_TERMS if term.isascii())
+        return has_policy_term and has_refund_context
 
     def _detect_emotion(self, text: str) -> dict[str, Any]:
         angry = sum(text.count(k) for k in ["生气", "愤怒", "垃圾", "太差", "曝光", "投诉", "差评"])

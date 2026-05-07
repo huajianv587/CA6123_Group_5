@@ -66,3 +66,11 @@ def test_router_low_confidence_rule_uses_llm_override():
     assert response.next_agent == "logistics"
     assert response.data["extracted_data"]["tracking_number"] == "SF1000000001"
     assert response.data["llm_used"] is True
+
+
+def test_router_routes_numeric_refund_policy_query():
+    response = route("\u0037\u5929\u65e0\u7406\u7531\u9000\u6b3e\u89c4\u5219\u662f\u4ec0\u4e48\uff1f")
+
+    assert response.data["intent"] == "refund"
+    assert response.next_agent == "refund"
+    assert response.data["extracted_data"]["requested_action"] == "policy_query"

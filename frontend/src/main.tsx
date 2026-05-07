@@ -36,23 +36,34 @@ function Chat() {
   const [loading, setLoading] = useState(false);
 
   async function send() {
-    if (!input.trim()) return;
-    const userMsg: ChatMessage = { role: 'user', content: input };
+    const content = input.trim();
+    if (!content || loading) return;
+    const userMsg: ChatMessage = { role: 'user', content };
     setMessages(prev => [...prev, userMsg]);
-    setLoading(true);
-    const res = await axios.post(`${API}/api/chat`, { session_id: sessionId, message: input });
-    setSessionId(res.data.session_id);
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: res.data.response,
-      agent: res.data.agent,
-      intent: res.data.intent,
-      rag_sources: res.data.rag_sources,
-      trace_id: res.data.trace_id,
-      safety_report: res.data.safety_report,
-    }]);
     setInput('');
-    setLoading(false);
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/chat`, { session_id: sessionId, message: content });
+      setSessionId(res.data.session_id);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: res.data.response,
+        agent: res.data.agent,
+        intent: res.data.intent,
+        rag_sources: res.data.rag_sources,
+        trace_id: res.data.trace_id,
+        safety_report: res.data.safety_report,
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Request failed. Please check the backend API and try again.',
+        agent: 'frontend',
+        intent: 'error',
+      }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return <section>
@@ -71,7 +82,7 @@ function Chat() {
     </div>
     <div className="composer">
       <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} />
-      <button onClick={send}><Send size={18}/>发送</button>
+      <button onClick={send} disabled={loading || !input.trim()}><Send size={18}/>发送</button>
     </div>
   </section>;
 }

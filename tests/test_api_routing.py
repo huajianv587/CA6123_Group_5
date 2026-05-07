@@ -128,6 +128,25 @@ def test_api_chat_routes_all_m1_intents_and_trace_fields():
         backend_main.app.dependency_overrides.clear()
 
 
+def test_api_chat_numeric_refund_policy_query_returns_policy_answer():
+    client = _client_with_seeded_db()
+
+    try:
+        response = client.post(
+            "/api/chat",
+            json={"message": "\u0037\u5929\u65e0\u7406\u7531\u9000\u6b3e\u89c4\u5219\u662f\u4ec0\u4e48\uff1f"},
+        )
+        payload = response.json()
+
+        assert response.status_code == 200
+        assert payload["success"] is True
+        assert payload["intent"] == "refund"
+        assert payload["agent"] == "refund"
+        assert payload["data"]["action"] == "policy_query"
+    finally:
+        backend_main.app.dependency_overrides.clear()
+
+
 def test_api_chat_context_followup_routes_to_logistics():
     client = _client_with_seeded_db()
 
