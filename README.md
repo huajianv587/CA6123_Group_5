@@ -8,34 +8,59 @@ Smart Service Center is a full-stack agentic customer-service demo for e-commerc
 
 The project is designed as a complete delivery loop rather than a static chatbot. A user can enter the web application, ask a service question, receive an answer, continue a multi-turn conversation, trigger a refund request, create a complaint escalation, and then observe the resulting database records through service pages. The backend records sessions, messages, agent events, refunds, complaints, orders, shipments, and knowledge objects so the demo can be inspected, tested, and repeated.
 
+## Visual Executive Summary
+
+The following figures summarize the project before the detailed technical description. They are included as versioned visual assets so GitHub can render them directly in the README.
+
+### Figure 1. Executive System Architecture
+
+![Executive architecture](docs/images/figure-1-executive-architecture.svg)
+
+### Figure 2. Customer Journey Coverage
+
+![Customer journey](docs/images/figure-2-customer-journey.svg)
+
+### Figure 3. Agentic Service Loop
+
+![Agentic loop](docs/images/figure-3-agentic-loop.svg)
+
+### Figure 4. Knowledge and Data Map
+
+![Knowledge and data map](docs/images/figure-4-knowledge-data-map.svg)
+
+### Figure 5. Verification Pipeline
+
+![Verification pipeline](docs/images/figure-5-verification-pipeline.svg)
+
 ## Keywords
 
 Agentic AI, Retrieval-Augmented Generation, Customer Service Automation, Human-in-the-Loop, Responsible AI, E-commerce Operations, FastAPI, React, SQLAlchemy, Supabase, Postgres, DeepSeek, OpenAI-Compatible API.
 
 ## Table of Contents
 
-1. [Project Overview](#project-overview)
-2. [Business Background](#business-background)
-3. [Real-World Pain Points](#real-world-pain-points)
-4. [Problems Solved by This System](#problems-solved-by-this-system)
-5. [Design Goals](#design-goals)
-6. [Business Architecture](#business-architecture)
-7. [Technical Architecture](#technical-architecture)
-8. [Agentic Workflow](#agentic-workflow)
-9. [RAG-v2 Knowledge Design](#rag-v2-knowledge-design)
-10. [Responsible-AI and Safety Design](#responsible-ai-and-safety-design)
-11. [Data Model](#data-model)
-12. [Frontend User Experience](#frontend-user-experience)
-13. [Backend API Surface](#backend-api-surface)
-14. [Environment Configuration](#environment-configuration)
-15. [Installation and Operation Guide](#installation-and-operation-guide)
-16. [Demo Scenarios](#demo-scenarios)
-17. [Testing and Acceptance](#testing-and-acceptance)
-18. [Load and Browser Verification](#load-and-browser-verification)
-19. [Security and Secret Management](#security-and-secret-management)
-20. [Project Structure](#project-structure)
-21. [Known Limitations](#known-limitations)
-22. [Future Work](#future-work)
+1. [Visual Executive Summary](#visual-executive-summary)
+2. [Project Overview](#project-overview)
+3. [Business Background](#business-background)
+4. [Real-World Pain Points](#real-world-pain-points)
+5. [Problems Solved by This System](#problems-solved-by-this-system)
+6. [Design Goals](#design-goals)
+7. [Business Architecture](#business-architecture)
+8. [Technical Architecture](#technical-architecture)
+9. [Agentic Workflow](#agentic-workflow)
+10. [RAG-v2 Knowledge Design](#rag-v2-knowledge-design)
+11. [Responsible-AI and Safety Design](#responsible-ai-and-safety-design)
+12. [Data Model](#data-model)
+13. [Frontend User Experience](#frontend-user-experience)
+14. [Backend API Surface](#backend-api-surface)
+15. [Environment Configuration](#environment-configuration)
+16. [Installation and Operation Guide](#installation-and-operation-guide)
+17. [Demo Scenarios](#demo-scenarios)
+18. [Testing and Acceptance](#testing-and-acceptance)
+19. [Load and Browser Verification](#load-and-browser-verification)
+20. [Security and Secret Management](#security-and-secret-management)
+21. [Project Structure](#project-structure)
+22. [Known Limitations](#known-limitations)
+23. [Future Work](#future-work)
 
 ## Project Overview
 
@@ -135,6 +160,8 @@ The project was built around six engineering goals.
 
 The business architecture separates customer interaction, service automation, business records, and staff review.
 
+![Customer journey coverage](docs/images/figure-2-customer-journey.svg)
+
 ```mermaid
 flowchart LR
     Customer["Customer"]
@@ -177,6 +204,10 @@ From a business perspective, the system supports three operational layers:
 3. **Human-review layer**: severe or high-risk cases are moved into support tickets.
 
 ## Technical Architecture
+
+The technical architecture is organized as a set of explicit layers: customer UI, service API, safety layer, routing and specialist agents, RAG-v2 knowledge, database persistence, and staff escalation.
+
+![Executive architecture](docs/images/figure-1-executive-architecture.svg)
 
 ```mermaid
 flowchart TB
@@ -252,6 +283,8 @@ Key architectural choices:
 
 The system implements a perceive-reason-act-learn service cycle.
 
+![Agentic service loop](docs/images/figure-3-agentic-loop.svg)
+
 ```mermaid
 sequenceDiagram
     participant U as User
@@ -296,6 +329,8 @@ sequenceDiagram
 ## RAG-v2 Knowledge Design
 
 The RAG-v2 layer is not just a document search module. It combines multiple structured knowledge types:
+
+![Knowledge and data map](docs/images/figure-4-knowledge-data-map.svg)
 
 | Knowledge Type | Database Table | Purpose |
 | --- | --- | --- |
@@ -601,6 +636,10 @@ Expected observations:
 - Sensitive content can be redacted before final response output.
 
 ## Testing and Acceptance
+
+The delivery workflow is evaluated as a system, not as isolated code fragments. The verification path combines backend tests, safety evaluation, Supabase checks, API smoke, frontend build, browser click testing, and light load testing.
+
+![Verification pipeline](docs/images/figure-5-verification-pipeline.svg)
 
 ### Unit and Integration Tests
 

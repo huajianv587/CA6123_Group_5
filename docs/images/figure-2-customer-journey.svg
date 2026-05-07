@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Customer journey supported by the service center</title>
+  <desc id="desc">A customer journey from entering the portal through order lookup, delivery tracking, refund request, complaint escalation, and staff resolution.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#245b80"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#102b3a" flood-opacity=".13"/>
+    </filter>
+    <style>
+      .title { font: 800 46px Inter, Segoe UI, Arial, sans-serif; fill: #10263b; }
+      .subtitle { font: 500 20px Inter, Segoe UI, Arial, sans-serif; fill: #607186; }
+      .card { fill: #ffffff; stroke: #d6e2ec; stroke-width: 2; filter: url(#shadow); }
+      .num { font: 900 38px Inter, Segoe UI, Arial, sans-serif; fill: #ffffff; }
+      .head { font: 800 24px Inter, Segoe UI, Arial, sans-serif; fill: #132b43; }
+      .body { font: 500 17px Inter, Segoe UI, Arial, sans-serif; fill: #5a6d81; }
+      .line { stroke: #245b80; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .green { fill: #25a26f; }
+      .blue { fill: #386dce; }
+      .orange { fill: #d8892d; }
+      .red { fill: #ca4e4a; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f6f9fc"/>
+  <text x="80" y="90" class="title">Customer Journey Coverage</text>
+  <text x="80" y="127" class="subtitle">The demo validates a realistic after-sales flow, not only a single chatbot response.</text>
+
+  <rect x="85" y="210" width="250" height="190" rx="24" class="card"/>
+  <circle cx="135" cy="260" r="30" class="blue"/>
+  <text x="124" y="273" class="num">1</text>
+  <text x="110" y="320" class="head">Enter Portal</text>
+  <text x="110" y="357" class="body">Landing page and</text>
+  <text x="110" y="382" class="body">bilingual service UI</text>
+
+  <rect x="420" y="210" width="250" height="190" rx="24" class="card"/>
+  <circle cx="470" cy="260" r="30" class="green"/>
+  <text x="459" y="273" class="num">2</text>
+  <text x="445" y="320" class="head">Check Order</text>
+  <text x="445" y="357" class="body">Status, payment, items,</text>
+  <text x="445" y="382" class="body">and customer details</text>
+
+  <rect x="755" y="210" width="250" height="190" rx="24" class="card"/>
+  <circle cx="805" cy="260" r="30" class="orange"/>
+  <text x="794" y="273" class="num">3</text>
+  <text x="780" y="320" class="head">Track Delivery</text>
+  <text x="780" y="357" class="body">Shipment state and</text>
+  <text x="780" y="382" class="body">tracking events</text>
+
+  <rect x="1090" y="210" width="250" height="190" rx="24" class="card"/>
+  <circle cx="1140" cy="260" r="30" class="green"/>
+  <text x="1129" y="273" class="num">4</text>
+  <text x="1115" y="320" class="head">Request Refund</text>
+  <text x="1115" y="357" class="body">Policy check and</text>
+  <text x="1115" y="382" class="body">refund record creation</text>
+
+  <rect x="260" y="540" width="300" height="190" rx="24" class="card"/>
+  <circle cx="315" cy="590" r="30" class="red"/>
+  <text x="304" y="603" class="num">5</text>
+  <text x="292" y="650" class="head">Escalate Complaint</text>
+  <text x="292" y="687" class="body">Severe dissatisfaction</text>
+  <text x="292" y="712" class="body">creates support ticket</text>
+
+  <rect x="670" y="540" width="300" height="190" rx="24" class="card"/>
+  <circle cx="725" cy="590" r="30" class="blue"/>
+  <text x="714" y="603" class="num">6</text>
+  <text x="702" y="650" class="head">Staff Review</text>
+  <text x="702" y="687" class="body">Open queue supports</text>
+  <text x="702" y="712" class="body">human service action</text>
+
+  <rect x="1080" y="540" width="300" height="190" rx="24" class="card"/>
+  <circle cx="1135" cy="590" r="30" class="green"/>
+  <text x="1124" y="603" class="num">7</text>
+  <text x="1112" y="650" class="head">Audit Records</text>
+  <text x="1112" y="687" class="body">Sessions, messages,</text>
+  <text x="1112" y="712" class="body">refunds, and events</text>
+
+  <path class="line" d="M335 305 L420 305"/>
+  <path class="line" d="M670 305 L755 305"/>
+  <path class="line" d="M1005 305 L1090 305"/>
+  <path class="line" d="M1215 405 C1180 485 1020 525 970 600"/>
+  <path class="line" d="M560 635 L670 635"/>
+  <path class="line" d="M970 635 L1080 635"/>
+
+  <rect x="80" y="790" width="1440" height="52" rx="18" fill="#e9f3ef" stroke="#c7dfd5"/>
+  <text x="120" y="824" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f5f49">Validated demo:</text>
+  <text x="280" y="824" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" fill="#355167">order lookup, logistics follow-up, refund policy, refund request, complaint escalation, prompt-injection blocking, and persistence.</text>
+</svg>
