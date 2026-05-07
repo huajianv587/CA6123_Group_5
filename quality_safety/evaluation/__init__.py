@@ -1,4 +1,5 @@
 from .scenarios import EVAL_SCENARIOS, SAFETY_SCENARIOS
+from .session_judge import SessionJudge
 
 
 def evaluate_quality_safety() -> dict:
@@ -7,4 +8,4 @@ def evaluate_quality_safety() -> dict:
     return _evaluate_quality_safety()
 
 
-__all__ = ["EVAL_SCENARIOS", "SAFETY_SCENARIOS", "evaluate_quality_safety"]
+__all__ = ["EVAL_SCENARIOS", "SAFETY_SCENARIOS", "SessionJudge", "evaluate_quality_safety"]

@@ -39,6 +39,9 @@ class QualitySafetyAgent:
                     r"you are now",
                     r"\bDAN\b",
                     r"bypass",
+                    r"扮演一个没有限制",
+                    r"覆盖指令",
+                    r"重置角色",
                     r"越狱",
                     r"忽略.*(之前|以上|系统).*指令",
                     r"透露.*(系统|开发者).*提示",
@@ -71,6 +74,21 @@ class QualitySafetyAgent:
             "repeated_complaint": [
                 re.compile(pattern, re.I)
                 for pattern in [r"第三次", r"又来", r"反复", r"多次", r"一直没人处理"]
+            ],
+            "malicious_pressure": [
+                re.compile(pattern, re.I)
+                for pattern in [
+                    r"不走流程",
+                    r"跳过审核",
+                    r"绕过系统",
+                    r"私下解决",
+                    r"后台帮我",
+                    r"你有权限",
+                    r"直接在系统里",
+                    r"你不帮我就是违法",
+                    r"必须满足我",
+                    r"不满足就投诉你",
+                ]
             ],
         }
         self.forbidden_commitments = {
@@ -133,7 +151,7 @@ class QualitySafetyAgent:
         return SafetyResult(
             text=report.text,
             blocked=blocked,
-            need_escalate=not blocked and any(category in {"fraud_risk", "repeated_complaint"} for category in categories),
+            need_escalate=not blocked and any(category in {"fraud_risk", "repeated_complaint", "malicious_pressure"} for category in categories),
             reason=reason,
             pii_redacted=report.redacted,
             pii_counts=report.counts,
@@ -191,6 +209,8 @@ class QualitySafetyAgent:
             reasons.append("suspected_fraud_risk")
         if "repeated_complaint" in input_categories:
             reasons.append("repeated_complaint")
+        if "malicious_pressure" in input_categories:
+            reasons.append("malicious_pressure_requires_human_review")
 
         return reasons
 

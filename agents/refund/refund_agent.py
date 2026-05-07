@@ -100,6 +100,10 @@ class RefundAgent(BaseAgent):
     def _reason(self, text: str) -> str:
         if any(k in text for k in ["质量", "坏", "故障", "破损"]):
             return "quality_issue"
+        if any(k in text for k in ["碎了", "压坏", "损坏"]):
+            return "damaged"
+        if any(k in text for k in ["没发货", "延迟", "等太久"]):
+            return "late_delivery"
         if any(k in text for k in ["七天", "无理由", "不想要", "不喜欢"]):
             return "seven_day"
         if any(k in text for k in ["错发", "少发", "不是我要"]):
@@ -111,7 +115,7 @@ class RefundAgent(BaseAgent):
     def _eligibility(self, order, reason: str) -> tuple[bool, str]:
         if order.status in {"cancelled", "refunded"}:
             return False, "订单已取消或已退款。"
-        if reason in {"quality_issue", "wrong_item", "not_as_described"}:
+        if reason in {"quality_issue", "wrong_item", "not_as_described", "damaged"}:
             return True, "卖家责任场景支持退款。"
         if order.received_at:
             days = (datetime.utcnow() - order.received_at).days
@@ -221,7 +225,7 @@ class RefundAgent(BaseAgent):
         ]
 
     def _amount(self, order, reason: str) -> float:
-        seller_fault = reason in {"quality_issue", "wrong_item", "not_as_described"}
+        seller_fault = reason in {"quality_issue", "wrong_item", "not_as_described", "damaged", "late_delivery"}
         return float(order.total_amount if seller_fault else order.total_amount - order.shipping_fee)
 
     def _reason_label(self, reason: str) -> str:
@@ -230,5 +234,7 @@ class RefundAgent(BaseAgent):
             "seven_day": "七天无理由",
             "wrong_item": "错发/少发",
             "not_as_described": "描述不符",
+            "damaged": "商品破损",
+            "late_delivery": "未按时发货",
             "other": "协商退款",
         }.get(reason, reason)
