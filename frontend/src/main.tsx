@@ -494,7 +494,7 @@ function HomeDashboard({ lang }: { lang: Lang }) {
             <MetricCard label={t.cards.orders} value={metrics.total_orders ?? data.recent_orders?.length ?? 0} note={t.notes.orderRecords} />
             <MetricCard label={t.cards.refunds} value={metrics.total_refunds ?? 0} note={t.cards.openRefunds} />
             <MetricCard label={t.cards.tickets} value={metrics.open_escalations ?? 0} note={t.notes.activeQueue} tone="warning" />
-            <MetricCard label={t.cards.protection} value={lang === 'zh' ? '开启' : 'On'} note={t.cards.protectionNote} tone="success" />
+            <MetricCard label={t.cards.messages} value={metrics.total_messages ?? 0} note={t.notes.customerMessages} tone="success" />
           </div>
 
           <div className="threeColumn">
