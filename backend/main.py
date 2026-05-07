@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from backend.schemas import ChatRequest, ChatResponse, ResolveRequest
 from orchestration import CustomerServiceOrchestrator
+from quality_safety.evaluation import evaluate_quality_safety
 from shared.database import get_db, init_db
 from shared.store import CustomerServiceStore
 
@@ -91,6 +92,45 @@ def order_detail(order_id: str, store: CustomerServiceStore = Depends(get_store)
 @app.get("/api/admin/metrics")
 def metrics(store: CustomerServiceStore = Depends(get_store)):
     return store.metrics()
+
+
+@app.get("/api/admin/evaluation/safety")
+def safety_evaluation():
+    return evaluate_quality_safety()
+
+
+@app.get("/api/admin/shared-knowledge")
+def shared_knowledge(store: CustomerServiceStore = Depends(get_store)):
+    rules = store.list_active_policy_rules()
+    cases = store.list_historical_cases(limit=20)
+    return {
+        "version": "RAG-v2",
+        "policy_rules": [
+            {
+                "rule_id": rule.rule_id,
+                "category": rule.category,
+                "title": rule.title,
+                "decision": rule.decision,
+                "reason_code": rule.reason_code,
+                "rule_version": rule.rule_version,
+                "effective_from": rule.effective_from.isoformat(),
+                "effective_to": rule.effective_to.isoformat() if rule.effective_to else None,
+                "source_doc_id": rule.source_doc_id,
+            }
+            for rule in rules
+        ],
+        "historical_cases": [
+            {
+                "case_id": case.case_id,
+                "category": case.category,
+                "title": case.title,
+                "outcome": case.outcome,
+                "customer_segment": case.customer_segment,
+                "product_category": case.product_category,
+            }
+            for case in cases
+        ],
+    }
 
 
 @app.get("/api/admin/escalations")

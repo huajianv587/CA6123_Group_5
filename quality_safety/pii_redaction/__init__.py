@@ -1,3 +1,3 @@
-from .redactor import PIIRedactor
+from .redactor import PIIRedactor, RedactionReport
 
-__all__ = ["PIIRedactor"]
+__all__ = ["PIIRedactor", "RedactionReport"]

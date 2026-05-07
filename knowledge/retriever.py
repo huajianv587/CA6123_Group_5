@@ -62,12 +62,61 @@ class KnowledgeRetriever:
                 haystack = f"{doc.title} {doc.content} {' '.join(doc.keywords or [])}"
                 score = self._keyword_score(query, haystack, doc.keywords or [])
                 scored.append((score, doc, doc.content, None))
-        scored = [row for row in scored if row[0] >= self.score_threshold]
-        scored.sort(key=lambda row: row[0], reverse=True)
-        return [
+        results = [
             RetrievalResult(doc_id=doc.doc_id, chunk_id=chunk_id, category=doc.category, source_title=doc.title, content=content, score=score)
-            for score, doc, content, chunk_id in scored[:top_k]
+            for score, doc, content, chunk_id in scored
+            if score >= self.score_threshold
         ]
+        results.extend(self._policy_rule_results(query, category))
+        results.extend(self._historical_case_results(query, category))
+        results.sort(key=lambda item: item.score, reverse=True)
+        return results[:top_k]
+
+    def _policy_rule_results(self, query: str, category: Optional[str]) -> list[RetrievalResult]:
+        if not hasattr(self.store, "list_active_policy_rules"):
+            return []
+        results = []
+        for rule in self.store.list_active_policy_rules(category=category):
+            haystack = f"{rule.title} {rule.answer} {' '.join(rule.keywords or [])} {' '.join(rule.refund_reasons or [])}"
+            score = self._keyword_score(query, haystack, rule.keywords or [])
+            if score >= self.score_threshold:
+                content = (
+                    f"{rule.answer} "
+                    f"Rule={rule.rule_id}; version={rule.rule_version}; decision={rule.decision}; "
+                    f"valid={rule.effective_from.date()}~{rule.effective_to.date() if rule.effective_to else 'open'}."
+                )
+                results.append(
+                    RetrievalResult(
+                        doc_id=rule.rule_id,
+                        chunk_id=None,
+                        category=rule.category,
+                        source_title=rule.title,
+                        content=content,
+                        score=min(1.0, score + 0.05),
+                    )
+                )
+        return results
+
+    def _historical_case_results(self, query: str, category: Optional[str]) -> list[RetrievalResult]:
+        if not hasattr(self.store, "list_historical_cases"):
+            return []
+        results = []
+        for case in self.store.list_historical_cases(category=category, limit=30):
+            haystack = f"{case.title} {case.issue_summary} {case.resolution} {' '.join(case.keywords or [])}"
+            score = self._keyword_score(query, haystack, case.keywords or [])
+            if score >= self.score_threshold:
+                content = f"历史案例：{case.issue_summary} 处理方式：{case.resolution} Outcome={case.outcome}."
+                results.append(
+                    RetrievalResult(
+                        doc_id=case.case_id,
+                        chunk_id=None,
+                        category=case.category,
+                        source_title=case.title,
+                        content=content,
+                        score=max(0.0, score - 0.03),
+                    )
+                )
+        return results
 
     def _memory_retrieve(self, query: str, top_k: int, category: Optional[str]) -> list[RetrievalResult]:
         scored = []
@@ -93,7 +142,15 @@ class KnowledgeRetriever:
             return {"source": "memory", "total_documents": len(FAQ_DOCUMENTS)}
         total = self.store.db.query(models.KnowledgeDocument).count()
         chunks = self.store.db.query(models.KnowledgeChunk).count()
-        return {"source": "database", "total_documents": total, "total_chunks": chunks}
+        policy_rules = self.store.db.query(models.PolicyRule).count()
+        historical_cases = self.store.db.query(models.HistoricalCase).count()
+        return {
+            "source": "database",
+            "total_documents": total,
+            "total_chunks": chunks,
+            "policy_rules": policy_rules,
+            "historical_cases": historical_cases,
+        }
 
     def _keyword_score(self, query: str, text: str, keywords: list[str]) -> float:
         hits = sum(1 for kw in keywords if kw and kw in query)

@@ -141,12 +141,10 @@ def test_api_chat_context_followup_routes_to_logistics():
         assert second["intent"] == "logistics"
         assert second["agent"] == "logistics"
         assert second["data"]["routing"]["context_used"] is True
-        assert [step["agent"] for step in second["routing_trace"]] == [
-            "router",
-            "order",
-            "orchestrator",
-            "logistics",
-            "quality_safety",
-        ]
+        trace_agents = [step["agent"] for step in second["routing_trace"]]
+        assert trace_agents[:4] == ["router", "order", "orchestrator", "logistics"]
+        assert "quality_safety" in trace_agents
+        assert second["trace_id"]
+        assert "safety_report" in second
     finally:
         backend_main.app.dependency_overrides.clear()

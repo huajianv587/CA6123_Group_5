@@ -170,6 +170,58 @@ class KnowledgeChunk(Base):
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")
 
 
+class PolicyRule(Base):
+    __tablename__ = "policy_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    rule_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    category: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(180))
+    decision: Mapped[str] = mapped_column(String(40), index=True)
+    reason_code: Mapped[str] = mapped_column(String(80), index=True)
+    customer_levels: Mapped[list] = mapped_column(JSON, default=list)
+    product_categories: Mapped[list] = mapped_column(JSON, default=list)
+    refund_reasons: Mapped[list] = mapped_column(JSON, default=list)
+    conditions: Mapped[dict] = mapped_column(JSON, default=dict)
+    answer: Mapped[str] = mapped_column(Text)
+    keywords: Mapped[list] = mapped_column(JSON, default=list)
+    source_doc_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    rule_version: Mapped[str] = mapped_column(String(32), default="v1")
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    effective_from: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    effective_to: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class HistoricalCase(Base):
+    __tablename__ = "historical_cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    category: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(180))
+    issue_summary: Mapped[str] = mapped_column(Text)
+    resolution: Mapped[str] = mapped_column(Text)
+    customer_segment: Mapped[str] = mapped_column(String(80), default="general")
+    product_category: Mapped[str] = mapped_column(String(80), default="general")
+    outcome: Mapped[str] = mapped_column(String(80), default="resolved")
+    keywords: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CustomerTag(Base):
+    __tablename__ = "customer_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    tag: Mapped[str] = mapped_column(String(80), index=True)
+    risk_level: Mapped[str] = mapped_column(String(32), default="low")
+    description: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(80), default="simulated_history")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class AgentEvent(Base):
     __tablename__ = "agent_events"
 

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
-import { AlertTriangle, BarChart3, Bot, CheckCircle2, MessageSquare, PackageSearch, Send } from 'lucide-react';
+import { AlertTriangle, BarChart3, Bot, CheckCircle2, MessageSquare, PackageSearch, Send, ShieldCheck } from 'lucide-react';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; agent?: string; intent?: string; rag_sources?: string[] };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; agent?: string; intent?: string; rag_sources?: string[]; trace_id?: string; safety_report?: any };
 
 function App() {
   const [tab, setTab] = useState('chat');
@@ -42,7 +42,15 @@ function Chat() {
     setLoading(true);
     const res = await axios.post(`${API}/api/chat`, { session_id: sessionId, message: input });
     setSessionId(res.data.session_id);
-    setMessages(prev => [...prev, { role: 'assistant', content: res.data.response, agent: res.data.agent, intent: res.data.intent, rag_sources: res.data.rag_sources }]);
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: res.data.response,
+      agent: res.data.agent,
+      intent: res.data.intent,
+      rag_sources: res.data.rag_sources,
+      trace_id: res.data.trace_id,
+      safety_report: res.data.safety_report,
+    }]);
     setInput('');
     setLoading(false);
   }
@@ -52,7 +60,12 @@ function Chat() {
     <div className="chat">
       {messages.map((m, i) => <div key={i} className={`msg ${m.role}`}>
         <div>{m.content}</div>
-        {m.role === 'assistant' && <small>Agent: {m.agent} | Intent: {m.intent} | RAG: {(m.rag_sources || []).join(', ') || 'none'}</small>}
+        {m.role === 'assistant' && <small>
+          Agent: {m.agent} | Intent: {m.intent} | RAG: {(m.rag_sources || []).join(', ') || 'none'} | Trace: {m.trace_id || 'n/a'}
+          {m.safety_report?.input?.blocked && <b className="badge danger">Blocked</b>}
+          {m.safety_report?.input?.pii_redacted && <b className="badge">Input PII redacted</b>}
+          {m.safety_report?.output?.pii_redacted && <b className="badge">Output PII redacted</b>}
+        </small>}
       </div>)}
       {loading && <div className="msg assistant">处理中...</div>}
     </div>
@@ -93,7 +106,11 @@ function Orders() {
 
 function Metrics() {
   const [data, setData] = useState<any>(null);
-  useEffect(() => { axios.get(`${API}/api/admin/metrics`).then(r => setData(r.data)); }, []);
+  const [evaluation, setEvaluation] = useState<any>(null);
+  useEffect(() => {
+    axios.get(`${API}/api/admin/metrics`).then(r => setData(r.data));
+    axios.get(`${API}/api/admin/evaluation/safety`).then(r => setEvaluation(r.data));
+  }, []);
   return <section>
     <header><BarChart3 size={22}/><h2>指标</h2></header>
     {data && <div className="grid">
@@ -101,6 +118,12 @@ function Metrics() {
       <Metric label="Sessions" value={data.total_sessions}/>
       <Metric label="Escalations" value={data.open_escalations}/>
       <Metric label="RAG Hit" value={`${data.rag_hit_rate}%`}/>
+    </div>}
+    {evaluation && <div className="panel">
+      <h3><ShieldCheck size={18}/> QualitySafetyAgent Evaluation</h3>
+      <div className="grid compact">
+        {Object.entries(evaluation.summary).map(([name, metric]: any) => <Metric key={name} label={name} value={`${metric.rate}%`}/>)}
+      </div>
     </div>}
     <pre>{JSON.stringify(data, null, 2)}</pre>
   </section>;

@@ -23,6 +23,8 @@ class ChatResponse(BaseModel):
     routing_trace: list[dict[str, Any]] = Field(default_factory=list)
     router_confidence: Optional[float] = None
     candidate_intents: list[dict[str, Any]] = Field(default_factory=list)
+    trace_id: Optional[str] = None
+    safety_report: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResolveRequest(BaseModel):

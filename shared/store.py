@@ -127,6 +127,28 @@ class CustomerServiceStore:
     def add_agent_event(self, agent: str, success: bool, duration_ms: float, session_id: Optional[str] = None, intent: Optional[str] = None, error: Optional[str] = None, metadata: Optional[dict] = None) -> None:
         self.db.add(models.AgentEvent(agent=agent, success=success, duration_ms=duration_ms, session_id=session_id, intent=intent, error=error, metadata_json=metadata or {}))
 
+    def list_active_policy_rules(self, category: Optional[str] = None, at: Optional[datetime] = None) -> list[models.PolicyRule]:
+        at = at or datetime.utcnow()
+        stmt = select(models.PolicyRule).where(
+            models.PolicyRule.enabled.is_(True),
+            models.PolicyRule.effective_from <= at,
+        )
+        if category:
+            stmt = stmt.where(models.PolicyRule.category == category)
+        rules = list(self.db.scalars(stmt.order_by(models.PolicyRule.priority.desc(), models.PolicyRule.id.asc())))
+        return [rule for rule in rules if rule.effective_to is None or rule.effective_to >= at]
+
+    def list_historical_cases(self, category: Optional[str] = None, limit: int = 5) -> list[models.HistoricalCase]:
+        stmt = select(models.HistoricalCase)
+        if category:
+            stmt = stmt.where(models.HistoricalCase.category == category)
+        stmt = stmt.order_by(models.HistoricalCase.created_at.desc()).limit(limit)
+        return list(self.db.scalars(stmt))
+
+    def get_customer_tags(self, customer_id: int) -> list[models.CustomerTag]:
+        stmt = select(models.CustomerTag).where(models.CustomerTag.customer_id == customer_id).order_by(models.CustomerTag.created_at.desc())
+        return list(self.db.scalars(stmt))
+
     def metrics(self) -> dict:
         total_messages = self.db.scalar(select(func.count(models.MessageRecord.id))) or 0
         total_sessions = self.db.scalar(select(func.count(models.ChatSession.id))) or 0
@@ -141,6 +163,9 @@ class CustomerServiceStore:
             select(models.AgentEvent.agent, func.count(models.AgentEvent.id))
             .group_by(models.AgentEvent.agent)
         ).all()
+        policy_rules = self.db.scalar(select(func.count(models.PolicyRule.id))) or 0
+        historical_cases = self.db.scalar(select(func.count(models.HistoricalCase.id))) or 0
+        customer_tags = self.db.scalar(select(func.count(models.CustomerTag.id))) or 0
         return {
             "total_messages": total_messages,
             "total_sessions": total_sessions,
@@ -148,4 +173,9 @@ class CustomerServiceStore:
             "rag_hit_rate": round((rag_hits / total_messages * 100), 1) if total_messages else 0,
             "intent_distribution": {intent: count for intent, count in intent_rows if intent},
             "agent_calls": {agent: count for agent, count in agent_rows},
+            "shared_knowledge": {
+                "policy_rules": policy_rules,
+                "historical_cases": historical_cases,
+                "customer_tags": customer_tags,
+            },
         }
