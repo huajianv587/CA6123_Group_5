@@ -121,7 +121,17 @@ Use the **Agent Console** to test these representative enterprise workflows:
 
 ## Visual Executive Summary
 
-The following figures summarize the project before the detailed technical explanation. The images are committed under `docs/images/` so GitHub can render the project as a visual-first submission.
+The following figures summarize the project before the detailed technical explanation. Static figures are committed under `docs/images/`, and lightweight GIF walkthroughs are committed under `docs/animations/`, so GitHub can render the project as a visual-first submission.
+
+### Animated Product Walkthrough
+
+The first animation shows the English enterprise workspace flow from landing page to operations dashboard, agent console, customer orders, refund cases, and escalation queue.
+
+![Operations workspace walkthrough](docs/animations/operations-workspace-demo.gif)
+
+The second animation summarizes the service operations closed loop from request intake to safety checks, routing, business context retrieval, recommendation, and persistent service records.
+
+![ServiceOps closed-loop workflow](docs/animations/serviceops-closed-loop.gif)
 
 ### Figure 1. Enterprise ServiceOps Workspace
 
@@ -151,7 +161,11 @@ The following figures summarize the project before the detailed technical explan
 
 ![Team contribution map](docs/images/figure-7-team-contribution-map.png)
 
-The prompt pack used to define the image direction is stored in [`docs/image_prompts/gptimage2-prompts.md`](docs/image_prompts/gptimage2-prompts.md).
+The prompt pack used to define the image direction is stored in [`docs/image_prompts/gptimage2-prompts.md`](docs/image_prompts/gptimage2-prompts.md). The deterministic Figure 4 and GIF walkthrough assets can be regenerated with:
+
+```powershell
+python scripts/generate_readme_visuals.py
+```
 
 ---
 
@@ -502,6 +516,7 @@ Browser acceptance checklist:
 agents/                 Specialist business agents
 backend/                FastAPI application and API routes
 docs/images/            README visual figures
+docs/animations/        README animated walkthroughs
 docs/image_prompts/     GPTImage2 prompt pack
 frontend/               React/Vite enterprise workspace
 integrations/           LLM/OpenAI-compatible client integration
