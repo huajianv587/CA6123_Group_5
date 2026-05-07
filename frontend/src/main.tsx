@@ -49,6 +49,9 @@ const navItems: NavItem[] = [
   { id: 'escalations', icon: AlertTriangle },
 ];
 
+const landingFeatureIcons = [Search, Truck, RotateCcw, MessageSquare];
+const landingTrustIcons = [ShieldCheck, CheckCircle2, AlertTriangle];
+
 const i18n = {
   zh: {
     nav: {
@@ -62,20 +65,32 @@ const i18n = {
     },
     brand: '智能客服中心',
     brandSub: '订单、物流、售后服务',
-    landingBrand: '智能客服中心',
-    landingSub: '第五组演示项目',
-    landingEyebrow: '一站式自助客服',
-    landingTitle: '让售后服务更清楚、更快速',
-    landingCopy: '查询订单、追踪物流、申请退款、查看帮助规则，并在需要时转人工协助。',
+    landingBrand: 'Smart Service',
+    landingSub: '订单、物流、退换与人工协助',
+    landingEyebrow: '省心售后服务中心',
+    landingTitle: '订单和售后问题，在这里一次解决',
+    landingCopy: '快速查订单、追踪物流、申请退换退款、查看售后帮助；遇到复杂问题时，直接转人工继续处理。',
     landingCta: '进入服务中心',
-    landingNote: '演示账号模式，无需登录即可体验。',
-    landingStats: ['订单查询', '物流追踪', '人工协助'],
-    previewTitle: '服务进度',
+    landingNote: '无需排队等待，常见问题自助处理，复杂问题转人工协助。',
+    landingStats: ['查订单', '追物流', '办退款', '找人工'],
+    landingFeatures: [
+      ['订单查询', '输入订单号即可查看订单状态、付款信息和商品明细。'],
+      ['物流追踪', '查看包裹进度、签收状态和最新配送记录。'],
+      ['退换退款', '了解规则并提交退款或售后申请。'],
+      ['人工协助', '投诉、丢件、高金额退款等问题可转人工处理。'],
+    ],
+    previewTitle: '你的服务旅程',
+    previewSubtitle: '从查单到售后处理，步骤清晰可见。',
     previewSteps: [
-      ['订单状态', '可查询'],
-      ['物流更新', '实时查看'],
-      ['退款申请', '可提交'],
-      ['人工服务', '可升级'],
+      ['查询订单', '确认订单状态和商品信息'],
+      ['追踪物流', '查看运输进度和签收记录'],
+      ['申请售后', '提交退款、退货或换货请求'],
+      ['人工协助', '复杂或紧急问题交给客服处理'],
+    ],
+    landingTrust: [
+      ['隐私保护', '手机号、地址等敏感信息会被保护。'],
+      ['进度透明', '每一步服务进展都可以在页面查看。'],
+      ['人工兜底', '系统无法直接处理时会创建人工服务单。'],
     ],
     refresh: '刷新',
     search: '查询',
@@ -180,20 +195,32 @@ const i18n = {
     },
     brand: 'Smart Service',
     brandSub: 'Orders, delivery, returns',
-    landingBrand: 'Smart Service Center',
-    landingSub: 'CA6123 Group 5',
-    landingEyebrow: 'Self-service support',
-    landingTitle: 'Clearer and faster customer support',
-    landingCopy: 'Check orders, track deliveries, request refunds, browse help topics, and ask for staff assistance when needed.',
+    landingBrand: 'Smart Service',
+    landingSub: 'Orders, delivery, returns, and staff support',
+    landingEyebrow: 'After-sales support made simple',
+    landingTitle: 'Resolve order and after-sales issues in one place',
+    landingCopy: 'Check order status, track deliveries, request returns or refunds, browse help topics, and move complex cases to staff support.',
     landingCta: 'Open service center',
-    landingNote: 'Demo account mode. No sign-in required.',
-    landingStats: ['Order help', 'Delivery tracking', 'Staff support'],
-    previewTitle: 'Service progress',
+    landingNote: 'Handle common requests instantly and keep staff support available for complex cases.',
+    landingStats: ['Orders', 'Delivery', 'Refunds', 'Staff help'],
+    landingFeatures: [
+      ['Order lookup', 'Enter an order number to review status, payment, and item details.'],
+      ['Delivery tracking', 'Check parcel progress, delivery status, and tracking records.'],
+      ['Returns and refunds', 'Understand service rules and submit after-sales requests.'],
+      ['Staff support', 'Escalate complaints, lost parcels, and high-value refund cases.'],
+    ],
+    previewTitle: 'Your service journey',
+    previewSubtitle: 'A clear path from order lookup to staff assistance.',
     previewSteps: [
-      ['Order status', 'Available'],
-      ['Delivery updates', 'Live'],
-      ['Refund request', 'Ready'],
-      ['Staff support', 'Available'],
+      ['Check order', 'Confirm order status and item details'],
+      ['Track delivery', 'Review shipping progress and delivery records'],
+      ['Request service', 'Submit refund, return, or exchange support'],
+      ['Get staff help', 'Move complex or urgent cases to support staff'],
+    ],
+    landingTrust: [
+      ['Privacy protected', 'Sensitive details such as phone numbers and addresses are handled with care.'],
+      ['Transparent progress', 'Service progress is visible from the customer pages.'],
+      ['Staff backup', 'Cases that need review become support tickets.'],
     ],
     refresh: 'Refresh',
     search: 'Search',
@@ -289,20 +316,24 @@ const i18n = {
 } as const;
 
 function App() {
-  const [entered, setEntered] = useState(() => window.localStorage.getItem('agentic-cs-entered') === 'true');
+  const [entered, setEntered] = useState(() => window.sessionStorage.getItem('agentic-cs-entered') === 'true');
   const [lang, setLang] = useState<Lang>(() => (window.localStorage.getItem('agentic-cs-lang') === 'en' ? 'en' : 'zh'));
   const [tab, setTab] = useState<Tab>('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const t = i18n[lang];
 
+  useEffect(() => {
+    window.localStorage.removeItem('agentic-cs-entered');
+  }, []);
+
   function enterApp() {
-    window.localStorage.setItem('agentic-cs-entered', 'true');
+    window.sessionStorage.setItem('agentic-cs-entered', 'true');
     setEntered(true);
     setTab('home');
   }
 
   function exitApp() {
-    window.localStorage.removeItem('agentic-cs-entered');
+    window.sessionStorage.removeItem('agentic-cs-entered');
     setEntered(false);
     setTab('home');
   }
@@ -373,13 +404,13 @@ function LandingPage({ lang, onLangChange, onEnter }: { lang: Lang; onLangChange
       <div className="landingOverlay" />
       <nav className="landingNav">
         <div className="brand inverse">
-          <div className="brandMark"><Bot size={20} /></div>
+          <div className="brandMark"><MessageSquare size={20} /></div>
           <div>
             <strong>{t.landingBrand}</strong>
             <span>{t.landingSub}</span>
           </div>
         </div>
-        <div className="heroActions">
+        <div className="landingNavActions">
           <LanguageButtons lang={lang} onLangChange={onLangChange} />
           <button className="secondaryButton" onClick={onEnter}>{t.landingCta}</button>
         </div>
@@ -390,24 +421,51 @@ function LandingPage({ lang, onLangChange, onEnter }: { lang: Lang; onLangChange
           <h1>{t.landingTitle}</h1>
           <p>{t.landingCopy}</p>
           <div className="heroActions">
-            <button className="primaryButton" onClick={onEnter}><MessageSquare size={18} /> {t.landingCta}</button>
+            <button className="primaryButton" onClick={onEnter}><Search size={18} /> {t.landingCta}</button>
             <span>{t.landingNote}</span>
           </div>
-          <div className="heroStats">
-            {t.landingStats.map(item => <MetricMini key={item} label={item} value="✓" />)}
+          <div className="featureStrip">
+            {t.landingFeatures.map(([title, copy], index) => {
+              const Icon = landingFeatureIcons[index] || CheckCircle2;
+              return (
+                <div className="featureTile" key={title}>
+                  <span><Icon size={18} /></span>
+                  <strong>{title}</strong>
+                  <small>{copy}</small>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div className="heroPreview" aria-label="Service preview">
-          <div className="previewHeader">
-            <span />
-            <span />
-            <span />
-            <strong>{t.previewTitle}</strong>
+        <div className="journeyPanel" aria-label="Service journey preview">
+          <div className="journeyHeader">
+            <span>{t.previewTitle}</span>
+            <strong>{t.previewSubtitle}</strong>
           </div>
-          <div className="previewBody">
+          <div className="journeyList">
             {t.previewSteps.map(([label, value], index) => (
-              <PreviewStep key={label} label={label} value={value} tone={index === 3 ? 'warning' : index === 0 ? 'success' : 'info'} />
+              <div className="journeyStep" key={label}>
+                <span className="journeyIndex">{index + 1}</span>
+                <div>
+                  <strong>{label}</strong>
+                  <small>{value}</small>
+                </div>
+              </div>
             ))}
+          </div>
+          <div className="trustGrid">
+            {t.landingTrust.map(([title, copy], index) => {
+              const Icon = landingTrustIcons[index] || ShieldCheck;
+              return (
+                <div className="trustItem" key={title}>
+                  <Icon size={18} />
+                  <div>
+                    <strong>{title}</strong>
+                    <small>{copy}</small>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
