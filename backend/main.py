@@ -230,10 +230,10 @@ def metrics(store: CustomerServiceStore = Depends(get_store)):
 def dashboard(store: CustomerServiceStore = Depends(get_store)):
     metrics_data = store.metrics()
     safety_data = evaluate_quality_safety()
-    recent_sessions = [_session_payload(item) for item in store.list_sessions(limit=6)]
+    recent_sessions = store.list_session_summaries(limit=6)
     recent_orders = [_order_payload(item) for item in store.list_orders(limit=6)]
     recent_refunds = [_refund_payload(item) for item in store.list_refunds(limit=6)]
-    escalations_data = [_escalation_payload(item) for item in store.list_escalations()[:6]]
+    escalations_data = [_escalation_payload(item) for item in store.list_escalations(limit=6)]
     agent_calls = metrics_data.get("agent_calls", {})
     agent_status = [
         {
@@ -275,7 +275,7 @@ def admin_refunds(
 
 @app.get("/api/admin/sessions")
 def admin_sessions(limit: int = Query(default=20, ge=1, le=100), store: CustomerServiceStore = Depends(get_store)):
-    return [_session_payload(item) for item in store.list_sessions(limit=limit)]
+    return store.list_session_summaries(limit=limit)
 
 
 @app.get("/api/admin/evaluation/safety")

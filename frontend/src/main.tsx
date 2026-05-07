@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 const client = axios.create({ baseURL: API });
 
 type Lang = 'zh' | 'en';

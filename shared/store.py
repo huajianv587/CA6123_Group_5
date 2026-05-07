@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from shared import models
 
@@ -57,6 +57,55 @@ class CustomerServiceStore:
             .limit(limit)
         )
         return list(self.db.scalars(stmt))
+
+    def list_session_summaries(self, limit: int = 20) -> list[dict]:
+        sessions = list(
+            self.db.scalars(
+                select(models.ChatSession)
+                .order_by(models.ChatSession.updated_at.desc())
+                .limit(limit)
+            )
+        )
+        if not sessions:
+            return []
+
+        session_ids = [session.id for session in sessions]
+        count_rows = self.db.execute(
+            select(models.MessageRecord.session_id, func.count(models.MessageRecord.id))
+            .where(models.MessageRecord.session_id.in_(session_ids))
+            .group_by(models.MessageRecord.session_id)
+        ).all()
+        message_counts = {session_id: count for session_id, count in count_rows}
+
+        messages = list(
+            self.db.scalars(
+                select(models.MessageRecord)
+                .where(models.MessageRecord.session_id.in_(session_ids))
+                .order_by(models.MessageRecord.created_at.desc())
+            )
+        )
+        latest_by_session: dict[str, models.MessageRecord] = {}
+        latest_assistant_by_session: dict[str, models.MessageRecord] = {}
+        for message in messages:
+            latest_by_session.setdefault(message.session_id, message)
+            if message.role == "assistant":
+                latest_assistant_by_session.setdefault(message.session_id, message)
+
+        return [
+            {
+                "id": session.id,
+                "status": session.status,
+                "user_id": session.user_id,
+                "escalated": session.escalated,
+                "message_count": message_counts.get(session.id, 0),
+                "last_message": latest_by_session.get(session.id).content if latest_by_session.get(session.id) else "",
+                "last_intent": latest_assistant_by_session.get(session.id).intent if latest_assistant_by_session.get(session.id) else None,
+                "last_agent": latest_assistant_by_session.get(session.id).agent if latest_assistant_by_session.get(session.id) else None,
+                "created_at": session.created_at.isoformat(),
+                "updated_at": session.updated_at.isoformat(),
+            }
+            for session in sessions
+        ]
 
     def get_order(self, order_id: str) -> Optional[models.Order]:
         stmt = (
@@ -115,7 +164,7 @@ class CustomerServiceStore:
     def list_refunds(self, limit: int = 25, status: Optional[str] = None) -> list[models.RefundRequest]:
         stmt = (
             select(models.RefundRequest)
-            .options(selectinload(models.RefundRequest.order).selectinload(models.Order.customer))
+            .options(joinedload(models.RefundRequest.order).joinedload(models.Order.customer))
             .order_by(models.RefundRequest.created_at.desc())
             .limit(limit)
         )
@@ -149,8 +198,10 @@ class CustomerServiceStore:
         self.db.flush()
         return complaint
 
-    def list_escalations(self) -> list[models.Complaint]:
+    def list_escalations(self, limit: Optional[int] = None) -> list[models.Complaint]:
         stmt = select(models.Complaint).where(models.Complaint.status == "open").order_by(models.Complaint.created_at.desc())
+        if limit:
+            stmt = stmt.limit(limit)
         return list(self.db.scalars(stmt))
 
     def resolve_escalation(self, complaint_id: int) -> Optional[models.Complaint]:
@@ -186,15 +237,27 @@ class CustomerServiceStore:
         return list(self.db.scalars(stmt))
 
     def metrics(self) -> dict:
-        total_messages = self.db.scalar(select(func.count(models.MessageRecord.id))) or 0
-        assistant_messages = (
-            self.db.scalar(select(func.count(models.MessageRecord.id)).where(models.MessageRecord.role == "assistant")) or 0
-        )
-        total_sessions = self.db.scalar(select(func.count(models.ChatSession.id))) or 0
-        escalations = self.db.scalar(select(func.count(models.Complaint.id)).where(models.Complaint.status == "open")) or 0
-        total_orders = self.db.scalar(select(func.count(models.Order.id))) or 0
-        total_refunds = self.db.scalar(select(func.count(models.RefundRequest.id))) or 0
-        open_refunds = self.db.scalar(select(func.count(models.RefundRequest.id)).where(models.RefundRequest.status == "pending")) or 0
+        counts = self.db.execute(
+            select(
+                select(func.count(models.MessageRecord.id)).scalar_subquery().label("total_messages"),
+                select(func.count(models.MessageRecord.id)).where(models.MessageRecord.role == "assistant").scalar_subquery().label("assistant_messages"),
+                select(func.count(models.ChatSession.id)).scalar_subquery().label("total_sessions"),
+                select(func.count(models.Complaint.id)).where(models.Complaint.status == "open").scalar_subquery().label("open_escalations"),
+                select(func.count(models.Order.id)).scalar_subquery().label("total_orders"),
+                select(func.count(models.RefundRequest.id)).scalar_subquery().label("total_refunds"),
+                select(func.count(models.RefundRequest.id)).where(models.RefundRequest.status == "pending").scalar_subquery().label("open_refunds"),
+                select(func.count(models.PolicyRule.id)).scalar_subquery().label("policy_rules"),
+                select(func.count(models.HistoricalCase.id)).scalar_subquery().label("historical_cases"),
+                select(func.count(models.CustomerTag.id)).scalar_subquery().label("customer_tags"),
+            )
+        ).one()
+        total_messages = counts.total_messages or 0
+        assistant_messages = counts.assistant_messages or 0
+        total_sessions = counts.total_sessions or 0
+        escalations = counts.open_escalations or 0
+        total_orders = counts.total_orders or 0
+        total_refunds = counts.total_refunds or 0
+        open_refunds = counts.open_refunds or 0
         rag_source_rows = self.db.scalars(
             select(models.MessageRecord.rag_sources).where(models.MessageRecord.role == "assistant")
         ).all()
@@ -208,9 +271,6 @@ class CustomerServiceStore:
             select(models.AgentEvent.agent, func.count(models.AgentEvent.id))
             .group_by(models.AgentEvent.agent)
         ).all()
-        policy_rules = self.db.scalar(select(func.count(models.PolicyRule.id))) or 0
-        historical_cases = self.db.scalar(select(func.count(models.HistoricalCase.id))) or 0
-        customer_tags = self.db.scalar(select(func.count(models.CustomerTag.id))) or 0
         return {
             "total_messages": total_messages,
             "assistant_messages": assistant_messages,
@@ -223,8 +283,8 @@ class CustomerServiceStore:
             "intent_distribution": {intent: count for intent, count in intent_rows if intent},
             "agent_calls": {agent: count for agent, count in agent_rows},
             "shared_knowledge": {
-                "policy_rules": policy_rules,
-                "historical_cases": historical_cases,
-                "customer_tags": customer_tags,
+                "policy_rules": counts.policy_rules or 0,
+                "historical_cases": counts.historical_cases or 0,
+                "customer_tags": counts.customer_tags or 0,
             },
         }
