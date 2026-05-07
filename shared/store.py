@@ -189,7 +189,8 @@ class CustomerServiceStore:
         total_messages = self.db.scalar(select(func.count(models.MessageRecord.id))) or 0
         total_sessions = self.db.scalar(select(func.count(models.ChatSession.id))) or 0
         escalations = self.db.scalar(select(func.count(models.Complaint.id)).where(models.Complaint.status == "open")) or 0
-        rag_hits = self.db.scalar(select(func.count(models.MessageRecord.id)).where(models.MessageRecord.rag_sources != [])) or 0
+        rag_source_rows = self.db.scalars(select(models.MessageRecord.rag_sources)).all()
+        rag_hits = sum(1 for sources in rag_source_rows if sources)
         intent_rows = self.db.execute(
             select(models.MessageRecord.intent, func.count(models.MessageRecord.id))
             .where(models.MessageRecord.intent.is_not(None))
