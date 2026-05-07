@@ -3,7 +3,7 @@ FAQ_DOCUMENTS = [
         "id": "refund_quality",
         "category": "refund",
         "question": "质量问题如何退款？",
-        "answer": "商品存在故障、破损、瑕疵等质量问题时，支持退款或换货，运费由商家承担。建议提交照片或视频作为凭证。",
+        "answer": "商品存在故障、破损、瑕疵等质量问题时，支持退款或换货，退货运费由商家承担。建议提交照片或视频作为凭证。",
         "keywords": ["质量", "故障", "破损", "坏了", "瑕疵"],
     },
     {
@@ -16,9 +16,16 @@ FAQ_DOCUMENTS = [
     {
         "id": "refund_time",
         "category": "refund",
-        "question": "退款多久到账？",
+        "question": "退款多久到款？",
         "answer": "退款申请提交后通常 1-3 个工作日审核，审核通过后 3-7 个工作日原路退回。",
         "keywords": ["多久到账", "几天", "退款时间", "审核"],
+    },
+    {
+        "id": "refund_shipping_fee",
+        "category": "refund",
+        "question": "退款时运费由谁承担？",
+        "answer": "质量问题、错发漏发、描述不符等卖家责任场景由商家承担退货运费；七天无理由等非质量问题通常由买家承担退货运费。",
+        "keywords": ["运费", "快递费", "谁承担", "卖家责任", "买家承担"],
     },
     {
         "id": "logistics_signed_missing",
@@ -35,10 +42,17 @@ FAQ_DOCUMENTS = [
         "keywords": ["没更新", "不动", "停滞", "延迟"],
     },
     {
+        "id": "logistics_lost_parcel",
+        "category": "logistics",
+        "question": "物流显示签收但用户没收到如何处理？",
+        "answer": "先排查家人、门卫、快递柜和驿站代收；如仍未找到，应联系承运商核查签收凭证，必要时转人工发起补发、退款或赔付调查。",
+        "keywords": ["签收但没收到", "丢件", "遗失", "冒签", "赔付"],
+    },
+    {
         "id": "order_address",
         "category": "order",
         "question": "订单可以修改收货地址吗？",
-        "answer": "待发货订单通常可以修改地址；已发货订单需联系承运商拦截或改派，成功率不保证。",
+        "answer": "待发货订单通常可以修改地址；已发货订单需要联系承运商拦截或改派，成功率不保证。",
         "keywords": ["改地址", "修改地址", "收货地址"],
     },
     {
@@ -47,6 +61,13 @@ FAQ_DOCUMENTS = [
         "question": "哪些投诉需要升级人工？",
         "answer": "涉及强烈情绪、法律风险、媒体曝光、12315、明确要求人工或多次投诉的情况，应升级人工处理。",
         "keywords": ["投诉", "人工", "曝光", "12315", "经理"],
+    },
+    {
+        "id": "complaint_repeated",
+        "category": "complaint",
+        "question": "重复投诉如何处理？",
+        "answer": "同一问题多次投诉、用户要求经理处理、提到 12315/媒体/法律风险时，应保留会话 trace 并升级人工客服。",
+        "keywords": ["重复投诉", "多次", "经理", "12315", "法律"],
     },
     {
         "id": "safety_privacy",
@@ -68,26 +89,5 @@ FAQ_DOCUMENTS = [
         "question": "哪些场景需要 human-in-the-loop 审核？",
         "answer": "高金额退款、强烈负面情绪、疑似欺诈、重复投诉、低置信度路由、签收未收到或丢件等风险场景需要升级人工复核。",
         "keywords": ["人工", "升级", "高金额", "低置信度", "丢件", "欺诈"],
-    },
-    {
-        "id": "refund_shipping_fee",
-        "category": "refund",
-        "question": "退款时运费由谁承担？",
-        "answer": "质量问题、错发漏发、描述不符等卖家责任场景由商家承担运费；七天无理由等非质量问题通常由买家承担退货运费。",
-        "keywords": ["运费", "快递费", "谁承担", "卖家责任", "买家承担"],
-    },
-    {
-        "id": "logistics_lost_parcel",
-        "category": "logistics",
-        "question": "物流显示签收但用户没收到如何处理？",
-        "answer": "先排查家人、门卫、快递柜和驿站代收；如仍未找到，应联系承运商核查签收凭证，必要时转人工发起补发、退款或赔偿调查。",
-        "keywords": ["签收但没收到", "丢件", "遗失", "冒签", "赔偿"],
-    },
-    {
-        "id": "complaint_repeated",
-        "category": "complaint",
-        "question": "重复投诉如何处理？",
-        "answer": "同一问题多次投诉、用户要求经理处理、提到 12315/媒体/法律风险时，应保留会话 trace 并升级人工客服。",
-        "keywords": ["重复投诉", "多次", "经理", "12315", "法律"],
     },
 ]

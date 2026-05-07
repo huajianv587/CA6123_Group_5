@@ -187,9 +187,17 @@ class CustomerServiceStore:
 
     def metrics(self) -> dict:
         total_messages = self.db.scalar(select(func.count(models.MessageRecord.id))) or 0
+        assistant_messages = (
+            self.db.scalar(select(func.count(models.MessageRecord.id)).where(models.MessageRecord.role == "assistant")) or 0
+        )
         total_sessions = self.db.scalar(select(func.count(models.ChatSession.id))) or 0
         escalations = self.db.scalar(select(func.count(models.Complaint.id)).where(models.Complaint.status == "open")) or 0
-        rag_source_rows = self.db.scalars(select(models.MessageRecord.rag_sources)).all()
+        total_orders = self.db.scalar(select(func.count(models.Order.id))) or 0
+        total_refunds = self.db.scalar(select(func.count(models.RefundRequest.id))) or 0
+        open_refunds = self.db.scalar(select(func.count(models.RefundRequest.id)).where(models.RefundRequest.status == "pending")) or 0
+        rag_source_rows = self.db.scalars(
+            select(models.MessageRecord.rag_sources).where(models.MessageRecord.role == "assistant")
+        ).all()
         rag_hits = sum(1 for sources in rag_source_rows if sources)
         intent_rows = self.db.execute(
             select(models.MessageRecord.intent, func.count(models.MessageRecord.id))
@@ -205,9 +213,13 @@ class CustomerServiceStore:
         customer_tags = self.db.scalar(select(func.count(models.CustomerTag.id))) or 0
         return {
             "total_messages": total_messages,
+            "assistant_messages": assistant_messages,
             "total_sessions": total_sessions,
+            "total_orders": total_orders,
+            "total_refunds": total_refunds,
+            "open_refunds": open_refunds,
             "open_escalations": escalations,
-            "rag_hit_rate": round((rag_hits / total_messages * 100), 1) if total_messages else 0,
+            "rag_hit_rate": round((rag_hits / assistant_messages * 100), 1) if assistant_messages else 0,
             "intent_distribution": {intent: count for intent, count in intent_rows if intent},
             "agent_calls": {agent: count for agent, count in agent_rows},
             "shared_knowledge": {

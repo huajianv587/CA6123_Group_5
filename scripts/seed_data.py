@@ -78,7 +78,23 @@ def seed_orders(db, customers):
         created = now - timedelta(days=randint(0, 30), hours=randint(0, 23))
         shipped_at = created + timedelta(days=1) if status in {"shipped", "signed", "completed"} else None
         received_at = shipped_at + timedelta(days=randint(1, 4)) if status in {"signed", "completed"} else None
-        if i == 99:
+        if i == 1:
+            customer = customers[0]
+            product_name, sku, price = ("iPhone 15 Pro Max", "SKU-IP15PM", 9999)
+            qty = 1
+            status = "shipped"
+            created = now - timedelta(days=3)
+            shipped_at = now - timedelta(days=2)
+            received_at = None
+        elif i == 2:
+            customer = customers[1]
+            product_name, sku, price = ("AirPods Pro 2", "SKU-APP2", 1899)
+            qty = 1
+            status = "completed"
+            created = now - timedelta(days=4)
+            shipped_at = now - timedelta(days=3)
+            received_at = now - timedelta(days=1)
+        elif i == 99:
             customer = customers[0]
             product_name, sku, price = ("iPhone 15 Pro Max", "SKU-IP15PM", 9999)
             qty = 1
