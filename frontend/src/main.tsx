@@ -1124,9 +1124,13 @@ function displayHelpTitle(value: string, lang: Lang) {
     电子产品七天无理由规则: 'Seven-day return rule for electronics',
     '虚拟/定制商品无理由退款限制': 'Return limits for virtual or customized products',
     'VIP/Gold 协商退款人工复核': 'Staff review for VIP or Gold refund requests',
+    'VIP 客户协商退款复核规则': 'VIP customer negotiated refund review rule',
     'VIP 高价值电子产品七天退货': 'VIP high-value electronics return',
+    'VIP 高价值电子产品退款复核': 'VIP high-value electronics refund review',
     签收未收到丢件争议: 'Delivered but not received case',
+    签收未收到争议处理: 'Delivered but not received dispute handling',
     重复投诉升级处理: 'Repeated complaint escalation',
+    重复投诉升级: 'Repeated complaint escalation',
   };
   return map[value] || displayDemoText(value, lang);
 }
