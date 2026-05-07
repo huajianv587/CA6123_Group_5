@@ -49,99 +49,102 @@ const navItems: NavItem[] = [
   { id: 'escalations', icon: AlertTriangle },
 ];
 
-const landingFeatureIcons = [Search, Truck, RotateCcw, MessageSquare];
-const landingTrustIcons = [ShieldCheck, CheckCircle2, AlertTriangle];
+const landingFlowIcons = [MessageSquare, Search, PackageSearch, CheckCircle2];
+const landingDataIcons = [PackageSearch, RotateCcw, BookOpen, ShieldCheck];
 
 const i18n = {
   zh: {
     nav: {
-      home: '首页',
-      chat: '在线客服',
-      orders: '我的订单',
-      refunds: '退换退款',
-      knowledge: '帮助中心',
-      metrics: '服务状态',
-      escalations: '人工服务单',
+      home: '运营总览',
+      chat: '客服处理台',
+      orders: '用户订单',
+      refunds: '退款工单',
+      knowledge: '企业知识库',
+      metrics: '服务质量',
+      escalations: '升级工单',
     },
-    brand: '智能客服中心',
-    brandSub: '订单、物流、售后服务',
-    landingBrand: 'Smart Service',
-    landingSub: '订单、物流、退换与人工协助',
-    landingEyebrow: '省心售后服务中心',
-    landingTitle: '订单和售后问题，在这里一次解决',
-    landingCopy: '快速查订单、追踪物流、申请退换退款、查看售后帮助；遇到复杂问题时，直接转人工继续处理。',
-    landingCta: '进入服务中心',
-    landingNote: '无需排队等待，常见问题自助处理，复杂问题转人工协助。',
-    landingStats: ['查订单', '追物流', '办退款', '找人工'],
-    landingFeatures: [
-      ['订单查询', '输入订单号即可查看订单状态、付款信息和商品明细。'],
-      ['物流追踪', '查看包裹进度、签收状态和最新配送记录。'],
-      ['退换退款', '了解规则并提交退款或售后申请。'],
-      ['人工协助', '投诉、丢件、高金额退款等问题可转人工处理。'],
+    brand: '智能客服运营',
+    brandSub: '企业客服工作台',
+    landingBrand: 'ServiceOps AI',
+    landingSub: '企业客服运营平台',
+    landingEyebrow: '面向企业客服团队',
+    landingTitle: '统一处理用户咨询、订单、退款与投诉',
+    landingCopy: '把用户消息、订单上下文、物流状态、退款规则、投诉升级和企业知识库集中到一个客服工作台，让坐席更快判断、更稳处理、更清楚追踪。',
+    landingCta: '打开客服工作台',
+    landingNote: '企业端演示系统：客服人员处理用户诉求，主管查看服务队列和风险事项。',
+    landingScroll: '向下滚动查看完整能力',
+    landingKpis: {
+      orders: '订单数据',
+      refunds: '退款工单',
+      tickets: '升级工单',
+      messages: '用户消息',
+    },
+    landingFlowTitle: '从用户诉求到企业处理闭环',
+    landingFlowCopy: '这是企业内部客服工作台，帮助客服团队把每一次咨询、投诉和售后请求转成可追踪、可复核、可处理的业务记录。',
+    landingFlow: [
+      ['用户诉求进入', '客服粘贴或接收用户咨询、投诉、退款和物流问题。'],
+      ['意图识别与分流', '系统识别订单、物流、退款、投诉等业务类型。'],
+      ['订单与知识上下文', '调取订单数据、物流状态、退款规则、历史案例和客户标签。'],
+      ['处理建议或升级工单', '生成客服回复建议，复杂或高风险事项进入人工升级队列。'],
     ],
-    previewTitle: '你的服务旅程',
-    previewSubtitle: '从查单到售后处理，步骤清晰可见。',
-    previewSteps: [
-      ['查询订单', '确认订单状态和商品信息'],
-      ['追踪物流', '查看运输进度和签收记录'],
-      ['申请售后', '提交退款、退货或换货请求'],
-      ['人工协助', '复杂或紧急问题交给客服处理'],
-    ],
-    landingTrust: [
-      ['隐私保护', '手机号、地址等敏感信息会被保护。'],
-      ['进度透明', '每一步服务进展都可以在页面查看。'],
-      ['人工兜底', '系统无法直接处理时会创建人工服务单。'],
+    landingDataTitle: '企业可见的数据、知识与风险队列',
+    landingDataCopy: '客服团队可以看到大量用户、订单、退款、投诉和知识规则，并用这些数据支撑每一次处理动作。',
+    landingDataPillars: [
+      ['订单上下文', '查看用户订单、商品、金额、付款状态和物流轨迹。'],
+      ['退款与投诉队列', '集中处理退款申请、强烈投诉、丢件争议和高金额风险。'],
+      ['企业知识库/RAG', '检索退款规则、历史案例、客户标签和业务政策。'],
+      ['服务质量监控', '查看隐私保护、风险拦截、人工复核和回复安全检查。'],
     ],
     refresh: '刷新',
     search: '查询',
     send: '发送',
     resolve: '标记已处理',
-    backLanding: '返回首页',
+    backLanding: '返回介绍页',
     language: '界面语言',
     chinese: '中文',
     english: '英文',
-    accountName: '演示用户',
-    accountRole: '客户',
-    menuTip: '客户服务模式',
-    newSession: '新的会话',
+    accountName: '演示客服',
+    accountRole: '客服坐席',
+    menuTip: '企业客服工作台',
+    newSession: '新的处理会话',
     pages: {
-      homeTitle: '用户服务首页',
-      homeSub: '查看近期订单、退款进度和人工服务单。',
-      chatTitle: '在线客服',
-      chatSub: '你可以查询订单、追踪物流、申请退款或提交投诉。',
-      ordersTitle: '我的订单',
-      ordersSub: '查询订单详情和物流状态。',
-      refundsTitle: '退换退款',
-      refundsSub: '查看退款申请和处理进度。',
-      knowledgeTitle: '帮助中心',
-      knowledgeSub: '常见退款、物流和售后问题。',
-      metricsTitle: '服务状态',
-      metricsSub: '查看当前服务处理情况和安全保护状态。',
-      ticketsTitle: '人工服务单',
-      ticketsSub: '需要人工协助的服务请求会显示在这里。',
+      homeTitle: '运营总览',
+      homeSub: '汇总用户消息、订单上下文、退款工单和高风险升级事项。',
+      chatTitle: '客服处理台',
+      chatSub: '输入或粘贴用户问题，系统辅助识别意图、查找上下文并生成处理建议。',
+      ordersTitle: '用户订单',
+      ordersSub: '按企业客服视角查看用户订单、商品、金额、付款和物流状态。',
+      refundsTitle: '退款工单',
+      refundsSub: '查看退款申请、处理状态、退款金额和关联用户订单。',
+      knowledgeTitle: '企业知识库',
+      knowledgeSub: '查看退款规则、历史案例、客户标签和 RAG 业务上下文。',
+      metricsTitle: '服务质量',
+      metricsSub: '监控隐私保护、风险拦截、人工复核和回复安全检查。',
+      ticketsTitle: '升级工单',
+      ticketsSub: '强烈投诉、丢件争议、高金额退款等需要人工复核的事项。',
     },
     cards: {
       orders: '订单总数',
-      messages: '服务消息',
-      refunds: '退款申请',
+      messages: '用户消息',
+      refunds: '退款工单',
       openRefunds: '待处理退款',
-      tickets: '人工服务单',
-      openTickets: '处理中服务单',
-      protection: '安全保护',
-      protectionNote: '已开启',
-      recentOrders: '最近订单',
-      recentService: '最近服务记录',
-      recentTickets: '待处理服务单',
-      serviceQuality: '服务保护',
-      refundProgress: '退款进度',
-      helpRules: '常见问题',
-      helpCases: '服务案例',
+      tickets: '升级工单',
+      openTickets: '待处理升级',
+      protection: '质量保护',
+      protectionNote: '规则正常',
+      recentOrders: '近期订单上下文',
+      recentService: '最新用户诉求',
+      recentTickets: '高风险升级工单',
+      serviceQuality: '服务质量检查',
+      refundProgress: '退款处理进度',
+      helpRules: '规则知识库',
+      helpCases: '历史案例',
     },
     notes: {
       orderRecords: '订单记录',
-      customerMessages: '客户沟通记录',
-      activeQueue: '等待人工协助',
-      refundQueue: '等待处理',
+      customerMessages: '用户消息记录',
+      activeQueue: '需要客服跟进',
+      refundQueue: '等待客服审核',
       privacy: '敏感信息保护',
       unsafe: '风险请求拦截',
       review: '人工复核提醒',
@@ -149,11 +152,11 @@ const i18n = {
     },
     labels: {
       status: '状态',
-      orderLookup: '订单查询',
+      orderLookup: '订单定位',
       all: '全部',
       payment: '支付状态',
       amount: '金额',
-      customer: '客户',
+      customer: '用户',
       shipment: '物流',
       noShipment: '暂无物流',
       noItem: '暂无商品',
@@ -161,117 +164,120 @@ const i18n = {
       refund: '退款',
       order: '订单',
       priority: '优先级',
-      session: '服务单',
-      serviceType: '服务类型',
+      session: '工单',
+      serviceType: '诉求类型',
       completed: '已完成',
-      noOrders: '暂无订单。',
-      noRefunds: '暂无退款记录，可通过在线客服创建。',
-      noTickets: '暂无人工服务单。',
+      noOrders: '暂无订单记录。',
+      noRefunds: '暂无退款工单。',
+      noTickets: '暂无升级工单。',
       loading: '正在加载数据...',
       unable: '数据加载失败，请稍后重试。',
       notFound: '未找到订单。',
-      emptyChatTitle: '开始一次服务对话',
-      emptyChatCopy: '可以先查询订单，再继续追问物流或申请售后。',
+      emptyChatTitle: '开始处理用户诉求',
+      emptyChatCopy: '输入用户原始问题，系统会辅助识别意图、查找上下文并生成客服处理建议。',
       processing: '正在处理...',
       failed: '请求失败，请确认后端服务已启动后再试。',
     },
     prompts: [
-      '我想查订单202404250001',
-      '那物流到哪里了？',
-      '7天无理由退款规则是什么？',
-      '订单202404250002 我要退款，质量有问题',
-      '我要投诉，你们服务太差了，我要找经理',
+      '用户咨询：我想查订单202404250001',
+      '用户追问：这个包裹现在到哪里了？',
+      '用户咨询：7天无理由退款规则是什么？',
+      '用户请求：订单202404250002 要退款，商品质量有问题',
+      '用户投诉：你们服务太差了，我要找经理',
     ],
   },
   en: {
     nav: {
-      home: 'Home',
-      chat: 'Live Chat',
-      orders: 'My Orders',
-      refunds: 'Returns & Refunds',
-      knowledge: 'Help Center',
-      metrics: 'Service Status',
-      escalations: 'Support Tickets',
+      home: 'Operations',
+      chat: 'Agent Console',
+      orders: 'Customer Orders',
+      refunds: 'Refund Cases',
+      knowledge: 'Knowledge Base',
+      metrics: 'Quality Monitor',
+      escalations: 'Escalation Queue',
     },
-    brand: 'Smart Service',
-    brandSub: 'Orders, delivery, returns',
-    landingBrand: 'Smart Service',
-    landingSub: 'Orders, delivery, returns, and staff support',
-    landingEyebrow: 'After-sales support made simple',
-    landingTitle: 'Resolve order and after-sales issues in one place',
-    landingCopy: 'Check order status, track deliveries, request returns or refunds, browse help topics, and move complex cases to staff support.',
-    landingCta: 'Open service center',
-    landingNote: 'Handle common requests instantly and keep staff support available for complex cases.',
-    landingStats: ['Orders', 'Delivery', 'Refunds', 'Staff help'],
-    landingFeatures: [
-      ['Order lookup', 'Enter an order number to review status, payment, and item details.'],
-      ['Delivery tracking', 'Check parcel progress, delivery status, and tracking records.'],
-      ['Returns and refunds', 'Understand service rules and submit after-sales requests.'],
-      ['Staff support', 'Escalate complaints, lost parcels, and high-value refund cases.'],
+    brand: 'ServiceOps AI',
+    brandSub: 'Enterprise agent workspace',
+    landingBrand: 'ServiceOps AI',
+    landingSub: 'Customer service operations platform',
+    landingEyebrow: 'Built for enterprise support teams',
+    landingTitle: 'Unify customer requests, orders, refunds, and complaints',
+    landingCopy: 'Bring customer messages, order context, delivery status, refund policy, complaint escalation, and enterprise knowledge into one agent workspace for faster and safer handling.',
+    landingCta: 'Open agent workspace',
+    landingNote: 'Enterprise-side demo: support agents handle customer requests while supervisors monitor queues and risks.',
+    landingScroll: 'Scroll to explore the full workflow',
+    landingKpis: {
+      orders: 'Order records',
+      refunds: 'Refund cases',
+      tickets: 'Escalations',
+      messages: 'Customer messages',
+    },
+    landingFlowTitle: 'From customer request to operational resolution',
+    landingFlowCopy: 'This enterprise workspace turns every inquiry, complaint, and after-sales request into trackable business work for support teams.',
+    landingFlow: [
+      ['Customer request intake', 'Agents paste or receive customer inquiries, complaints, refund requests, and delivery issues.'],
+      ['Intent routing', 'The system separates order, logistics, refund, complaint, and unknown requests.'],
+      ['Order and knowledge context', 'It retrieves order data, shipment status, refund rules, historical cases, and customer tags.'],
+      ['Recommendation or escalation', 'It drafts handling guidance and moves complex or risky cases into escalation queues.'],
     ],
-    previewTitle: 'Your service journey',
-    previewSubtitle: 'A clear path from order lookup to staff assistance.',
-    previewSteps: [
-      ['Check order', 'Confirm order status and item details'],
-      ['Track delivery', 'Review shipping progress and delivery records'],
-      ['Request service', 'Submit refund, return, or exchange support'],
-      ['Get staff help', 'Move complex or urgent cases to support staff'],
-    ],
-    landingTrust: [
-      ['Privacy protected', 'Sensitive details such as phone numbers and addresses are handled with care.'],
-      ['Transparent progress', 'Service progress is visible from the customer pages.'],
-      ['Staff backup', 'Cases that need review become support tickets.'],
+    landingDataTitle: 'Operational data, knowledge, and risk queues',
+    landingDataCopy: 'Support teams can inspect users, orders, refunds, complaints, and policy rules, then use that context to make consistent service decisions.',
+    landingDataPillars: [
+      ['Order context', 'Review customer orders, items, amount, payment status, and delivery trail.'],
+      ['Refund and complaint queues', 'Handle refund requests, severe complaints, lost-parcel disputes, and high-value risk.'],
+      ['Knowledge Base / RAG', 'Retrieve refund policies, historical cases, customer tags, and business rules.'],
+      ['Quality monitoring', 'Track privacy protection, risk blocking, staff review, and reply safety checks.'],
     ],
     refresh: 'Refresh',
     search: 'Search',
     send: 'Send',
     resolve: 'Mark resolved',
-    backLanding: 'Back to landing',
+    backLanding: 'Back to intro',
     language: 'Language',
     chinese: 'Chinese',
     english: 'English',
-    accountName: 'Demo Customer',
-    accountRole: 'Customer',
-    menuTip: 'Customer service mode',
-    newSession: 'New conversation',
+    accountName: 'Demo Agent',
+    accountRole: 'Support Operator',
+    menuTip: 'Enterprise agent workspace',
+    newSession: 'New handling session',
     pages: {
-      homeTitle: 'Service Home',
-      homeSub: 'Review recent orders, refund progress, and support tickets.',
-      chatTitle: 'Live Chat',
-      chatSub: 'Ask about orders, delivery, refunds, or complaints.',
-      ordersTitle: 'My Orders',
-      ordersSub: 'Search order details and delivery status.',
-      refundsTitle: 'Returns & Refunds',
-      refundsSub: 'Review refund requests and handling progress.',
-      knowledgeTitle: 'Help Center',
-      knowledgeSub: 'Common questions about refunds, delivery, and after-sales service.',
-      metricsTitle: 'Service Status',
-      metricsSub: 'A simple overview of service handling and protection status.',
-      ticketsTitle: 'Support Tickets',
-      ticketsSub: 'Requests that need staff assistance appear here.',
+      homeTitle: 'Operations Overview',
+      homeSub: 'Monitor customer messages, order context, refund cases, and high-risk escalations.',
+      chatTitle: 'Agent Console',
+      chatSub: 'Enter or paste a customer request so the system can identify intent, retrieve context, and draft handling guidance.',
+      ordersTitle: 'Customer Orders',
+      ordersSub: 'Review customer orders, items, amount, payment status, and delivery state from an agent view.',
+      refundsTitle: 'Refund Cases',
+      refundsSub: 'Review refund requests, handling status, amount, and linked customer orders.',
+      knowledgeTitle: 'Knowledge Base',
+      knowledgeSub: 'Inspect refund policies, historical cases, customer tags, and RAG business context.',
+      metricsTitle: 'Quality Monitor',
+      metricsSub: 'Monitor privacy protection, risk blocking, staff review, and reply safety checks.',
+      ticketsTitle: 'Escalation Queue',
+      ticketsSub: 'Severe complaints, lost-parcel disputes, high-value refunds, and other cases requiring staff review.',
     },
     cards: {
       orders: 'Total orders',
-      messages: 'Service messages',
-      refunds: 'Refund requests',
+      messages: 'Customer messages',
+      refunds: 'Refund cases',
       openRefunds: 'Pending refunds',
-      tickets: 'Support tickets',
-      openTickets: 'Open tickets',
-      protection: 'Protection',
-      protectionNote: 'Enabled',
-      recentOrders: 'Recent Orders',
-      recentService: 'Recent Service',
-      recentTickets: 'Open Support Tickets',
-      serviceQuality: 'Service Protection',
-      refundProgress: 'Refund Progress',
-      helpRules: 'Common Questions',
-      helpCases: 'Service Examples',
+      tickets: 'Escalation tickets',
+      openTickets: 'Open escalations',
+      protection: 'Quality protection',
+      protectionNote: 'Rules healthy',
+      recentOrders: 'Recent Order Context',
+      recentService: 'Latest Customer Requests',
+      recentTickets: 'High-Risk Escalations',
+      serviceQuality: 'Quality Checks',
+      refundProgress: 'Refund Handling Progress',
+      helpRules: 'Policy Knowledge',
+      helpCases: 'Historical Cases',
     },
     notes: {
       orderRecords: 'order records',
-      customerMessages: 'customer conversations',
-      activeQueue: 'waiting for staff support',
-      refundQueue: 'waiting for review',
+      customerMessages: 'customer message records',
+      activeQueue: 'need agent follow-up',
+      refundQueue: 'awaiting agent review',
       privacy: 'Sensitive information protection',
       unsafe: 'Unsafe request blocking',
       review: 'Staff review reminders',
@@ -279,7 +285,7 @@ const i18n = {
     },
     labels: {
       status: 'Status',
-      orderLookup: 'Order lookup',
+      orderLookup: 'Order locator',
       all: 'All',
       payment: 'Payment',
       amount: 'Amount',
@@ -291,26 +297,26 @@ const i18n = {
       refund: 'Refund',
       order: 'Order',
       priority: 'Priority',
-      session: 'Ticket',
-      serviceType: 'Service type',
+      session: 'Case',
+      serviceType: 'Request type',
       completed: 'Completed',
-      noOrders: 'No orders yet.',
-      noRefunds: 'No refund records yet. You can create one in Live Chat.',
-      noTickets: 'No support tickets.',
+      noOrders: 'No order records.',
+      noRefunds: 'No refund cases.',
+      noTickets: 'No escalation tickets.',
       loading: 'Loading data...',
       unable: 'Unable to load data. Please try again later.',
       notFound: 'Order not found.',
-      emptyChatTitle: 'Start a service conversation',
-      emptyChatCopy: 'Try checking an order first, then ask about delivery or after-sales service.',
+      emptyChatTitle: 'Start handling a customer request',
+      emptyChatCopy: 'Enter the customer message. The system will identify intent, retrieve context, and draft handling guidance.',
       processing: 'Processing...',
       failed: 'Request failed. Please confirm the service is running and try again.',
     },
     prompts: [
-      'I want to check order 202404250001',
-      'Where is the delivery now?',
-      'What is the seven-day return policy?',
-      'I want a refund for order 202404250002 because of a quality issue.',
-      'I want to file a complaint and speak with a manager.',
+      'Customer asks: I want to check order 202404250001',
+      'Customer follow-up: Where is the delivery now?',
+      'Customer asks: What is the seven-day return policy?',
+      'Customer request: I want a refund for order 202404250002 because of a quality issue.',
+      'Customer complaint: Your service is terrible and I want to speak with a manager.',
     ],
   },
 } as const;
@@ -399,80 +405,103 @@ function App() {
 
 function LandingPage({ lang, onLangChange, onEnter }: { lang: Lang; onLangChange: (lang: Lang) => void; onEnter: () => void }) {
   const t = i18n[lang];
+  const { data } = useApiData<any>('/api/admin/dashboard', lang);
+  const metrics = data?.metrics || {};
+  const liveKpis = [
+    [t.landingKpis.orders, metrics.total_orders],
+    [t.landingKpis.refunds, metrics.total_refunds],
+    [t.landingKpis.tickets, metrics.open_escalations],
+    [t.landingKpis.messages, metrics.total_messages],
+  ];
+
   return (
-    <main className="landing">
-      <div className="landingOverlay" />
-      <nav className="landingNav">
-        <div className="brand inverse">
-          <div className="brandMark"><MessageSquare size={20} /></div>
-          <div>
-            <strong>{t.landingBrand}</strong>
-            <span>{t.landingSub}</span>
+    <main className="landing enterpriseLanding">
+      <section className="landingScreen landingHeroScreen" aria-label={t.landingTitle}>
+        <div className="landingOverlay" />
+        <nav className="landingNav">
+          <div className="brand inverse">
+            <div className="brandMark"><Bot size={20} /></div>
+            <div>
+              <strong>{t.landingBrand}</strong>
+              <span>{t.landingSub}</span>
+            </div>
           </div>
-        </div>
-        <div className="landingNavActions">
-          <LanguageButtons lang={lang} onLangChange={onLangChange} />
-          <button className="secondaryButton" onClick={onEnter}>{t.landingCta}</button>
-        </div>
-      </nav>
-      <div className="landingGrid">
-        <div className="heroCopy">
-          <span className="eyebrow"><Sparkles size={16} /> {t.landingEyebrow}</span>
-          <h1>{t.landingTitle}</h1>
-          <p>{t.landingCopy}</p>
-          <div className="heroActions">
-            <button className="primaryButton" onClick={onEnter}><Search size={18} /> {t.landingCta}</button>
-            <span>{t.landingNote}</span>
+          <div className="landingNavActions">
+            <LanguageButtons lang={lang} onLangChange={onLangChange} />
+            <button className="secondaryButton" onClick={onEnter}>{t.landingCta}</button>
           </div>
-          <div className="featureStrip">
-            {t.landingFeatures.map(([title, copy], index) => {
-              const Icon = landingFeatureIcons[index] || CheckCircle2;
-              return (
-                <div className="featureTile" key={title}>
-                  <span><Icon size={18} /></span>
-                  <strong>{title}</strong>
-                  <small>{copy}</small>
-                </div>
-              );
-            })}
+        </nav>
+
+        <div className="landingGrid enterpriseHeroGrid">
+          <div className="heroCopy enterpriseHeroCopy">
+            <span className="eyebrow"><Sparkles size={16} /> {t.landingEyebrow}</span>
+            <h1>{t.landingTitle}</h1>
+            <p>{t.landingCopy}</p>
+            <div className="heroActions">
+              <button className="primaryButton" onClick={onEnter}><Search size={18} /> {t.landingCta}</button>
+              <span>{t.landingNote}</span>
+            </div>
           </div>
-        </div>
-        <div className="journeyPanel" aria-label="Service journey preview">
-          <div className="journeyHeader">
-            <span>{t.previewTitle}</span>
-            <strong>{t.previewSubtitle}</strong>
-          </div>
-          <div className="journeyList">
-            {t.previewSteps.map(([label, value], index) => (
-              <div className="journeyStep" key={label}>
-                <span className="journeyIndex">{index + 1}</span>
-                <div>
-                  <strong>{label}</strong>
-                  <small>{value}</small>
-                </div>
+
+          <div className="liveKpiPanel" aria-label="Live operations metrics">
+            {liveKpis.map(([label, value]) => (
+              <div className="liveKpi" key={label}>
+                <small>{label}</small>
+                <strong>{value ?? '...'}</strong>
               </div>
             ))}
           </div>
-          <div className="trustGrid">
-            {t.landingTrust.map(([title, copy], index) => {
-              const Icon = landingTrustIcons[index] || ShieldCheck;
-              return (
-                <div className="trustItem" key={title}>
-                  <Icon size={18} />
-                  <div>
-                    <strong>{title}</strong>
-                    <small>{copy}</small>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
-      </div>
+        <div className="scrollCue">{t.landingScroll}</div>
+      </section>
+
+      <section className="landingScreen processScreen" aria-label={t.landingFlowTitle}>
+        <div className="sectionCopy">
+          <span className="eyebrow"><RefreshCcw size={16} /> {t.landingEyebrow}</span>
+          <h2>{t.landingFlowTitle}</h2>
+          <p>{t.landingFlowCopy}</p>
+        </div>
+        <div className="flowGrid">
+          {t.landingFlow.map(([title, copy], index) => {
+            const Icon = landingFlowIcons[index] || CheckCircle2;
+            return (
+              <div className="flowStep" key={title}>
+                <span className="flowIndex">{index + 1}</span>
+                <Icon size={22} />
+                <strong>{title}</strong>
+                <small>{copy}</small>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="landingScreen dataScreen" aria-label={t.landingDataTitle}>
+        <div className="sectionCopy">
+          <span className="eyebrow"><BookOpen size={16} /> {t.landingSub}</span>
+          <h2>{t.landingDataTitle}</h2>
+          <p>{t.landingDataCopy}</p>
+        </div>
+        <div className="dataPillarGrid">
+          {t.landingDataPillars.map(([title, copy], index) => {
+            const Icon = landingDataIcons[index] || ShieldCheck;
+            return (
+              <div className="dataPillar" key={title}>
+                <span><Icon size={22} /></span>
+                <strong>{title}</strong>
+                <small>{copy}</small>
+              </div>
+            );
+          })}
+        </div>
+        <div className="landingFinalAction">
+          <button className="primaryButton" onClick={onEnter}><BarChart3 size={18} /> {t.landingCta}</button>
+          <span>{t.landingNote}</span>
+        </div>
+      </section>
     </main>
   );
 }
-
 function HomeDashboard({ lang }: { lang: Lang }) {
   const t = i18n[lang];
   const { data, loading, error, refresh } = useApiData<any>('/api/admin/dashboard', lang);
@@ -492,9 +521,9 @@ function HomeDashboard({ lang }: { lang: Lang }) {
         <>
           <div className="metricGrid">
             <MetricCard label={t.cards.orders} value={metrics.total_orders ?? data.recent_orders?.length ?? 0} note={t.notes.orderRecords} />
-            <MetricCard label={t.cards.refunds} value={metrics.total_refunds ?? 0} note={t.cards.openRefunds} />
-            <MetricCard label={t.cards.tickets} value={metrics.open_escalations ?? 0} note={t.notes.activeQueue} tone="warning" />
             <MetricCard label={t.cards.messages} value={metrics.total_messages ?? 0} note={t.notes.customerMessages} tone="success" />
+            <MetricCard label={t.cards.openRefunds} value={metrics.open_refunds ?? 0} note={t.notes.refundQueue} />
+            <MetricCard label={t.cards.tickets} value={metrics.open_escalations ?? 0} note={t.notes.activeQueue} tone="warning" />
           </div>
 
           <div className="threeColumn">
@@ -600,7 +629,7 @@ function Chat({ lang }: { lang: Lang }) {
               value={input}
               onChange={event => setInput(event.target.value)}
               onKeyDown={event => event.key === 'Enter' && send()}
-              placeholder={lang === 'zh' ? '输入订单、物流、退款或投诉问题...' : 'Ask about orders, delivery, refunds, or complaints...'}
+              placeholder={lang === 'zh' ? '输入或粘贴用户咨询、投诉、退款或物流问题...' : 'Enter or paste a customer inquiry, complaint, refund, or delivery issue...'}
             />
             <button onClick={() => send()} disabled={loading || !input.trim()}><Send size={18} /> {t.send}</button>
           </div>
@@ -832,7 +861,7 @@ function Escalations({ lang }: { lang: Lang }) {
   async function resolve(id: number) {
     setBusyId(id);
     try {
-      await client.post(`/api/admin/escalations/${id}/resolve`, { note: 'resolved from customer UI' });
+      await client.post(`/api/admin/escalations/${id}/resolve`, { note: 'resolved from agent workspace' });
       refresh();
     } finally {
       setBusyId(null);
@@ -945,24 +974,6 @@ function MetricCard({ label, value, note, tone = 'info' }: { label: string; valu
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{note}</small>
-    </div>
-  );
-}
-
-function MetricMini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metricMini">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function PreviewStep({ label, value, tone }: { label: string; value: string; tone: 'success' | 'info' | 'warning' }) {
-  return (
-    <div className="previewStep">
-      <span>{label}</span>
-      <StatusPill tone={tone} label={value} />
     </div>
   );
 }
