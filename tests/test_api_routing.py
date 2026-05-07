@@ -147,6 +147,34 @@ def test_api_chat_numeric_refund_policy_query_returns_policy_answer():
         backend_main.app.dependency_overrides.clear()
 
 
+def test_admin_read_models_power_dashboard_pages():
+    client = _client_with_seeded_db()
+
+    try:
+        chat = client.post(
+            "/api/chat",
+            json={"message": "\u8ba2\u5355202404250001 \u6211\u8981\u9000\u6b3e\uff0c\u8d28\u91cf\u6709\u95ee\u9898"},
+        )
+        assert chat.status_code == 200
+
+        dashboard = client.get("/api/admin/dashboard")
+        orders = client.get("/api/admin/orders?limit=10")
+        refunds = client.get("/api/admin/refunds?limit=10")
+        sessions = client.get("/api/admin/sessions?limit=10")
+
+        assert dashboard.status_code == 200
+        assert dashboard.json()["database"]["server_managed"] is True
+        assert "agent_status" in dashboard.json()
+        assert orders.status_code == 200
+        assert orders.json()[0]["order_id"] == "202404250001"
+        assert refunds.status_code == 200
+        assert refunds.json()[0]["order"]["order_id"] == "202404250001"
+        assert sessions.status_code == 200
+        assert sessions.json()[0]["message_count"] >= 2
+    finally:
+        backend_main.app.dependency_overrides.clear()
+
+
 def test_api_chat_context_followup_routes_to_logistics():
     client = _client_with_seeded_db()
 

@@ -49,6 +49,15 @@ class CustomerServiceStore:
         stmt = select(models.MessageRecord).where(models.MessageRecord.session_id == session_id).order_by(models.MessageRecord.created_at)
         return list(self.db.scalars(stmt))
 
+    def list_sessions(self, limit: int = 20) -> list[models.ChatSession]:
+        stmt = (
+            select(models.ChatSession)
+            .options(selectinload(models.ChatSession.messages))
+            .order_by(models.ChatSession.updated_at.desc())
+            .limit(limit)
+        )
+        return list(self.db.scalars(stmt))
+
     def get_order(self, order_id: str) -> Optional[models.Order]:
         stmt = (
             select(models.Order)
@@ -66,6 +75,22 @@ class CustomerServiceStore:
         stmt = select(models.Order).options(selectinload(models.Order.items), selectinload(models.Order.shipment)).order_by(models.Order.created_at.desc()).limit(limit)
         if user_id:
             stmt = stmt.where(models.Order.customer_id == user_id)
+        return list(self.db.scalars(stmt))
+
+    def list_orders(self, limit: int = 25, status: Optional[str] = None) -> list[models.Order]:
+        stmt = (
+            select(models.Order)
+            .options(
+                selectinload(models.Order.items),
+                selectinload(models.Order.shipment).selectinload(models.Shipment.events),
+                selectinload(models.Order.refunds),
+                selectinload(models.Order.customer),
+            )
+            .order_by(models.Order.created_at.desc())
+            .limit(limit)
+        )
+        if status:
+            stmt = stmt.where(models.Order.status == status)
         return list(self.db.scalars(stmt))
 
     def cancel_order(self, order: models.Order) -> None:
@@ -86,6 +111,17 @@ class CustomerServiceStore:
         self.db.add(refund)
         self.db.flush()
         return refund
+
+    def list_refunds(self, limit: int = 25, status: Optional[str] = None) -> list[models.RefundRequest]:
+        stmt = (
+            select(models.RefundRequest)
+            .options(selectinload(models.RefundRequest.order).selectinload(models.Order.customer))
+            .order_by(models.RefundRequest.created_at.desc())
+            .limit(limit)
+        )
+        if status:
+            stmt = stmt.where(models.RefundRequest.status == status)
+        return list(self.db.scalars(stmt))
 
     def has_open_refund(self, order: models.Order) -> bool:
         return any(r.status in {"pending", "approved", "processing"} for r in order.refunds)

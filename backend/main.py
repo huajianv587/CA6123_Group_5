@@ -1,10 +1,13 @@
-from fastapi import Depends, FastAPI, HTTPException
+from typing import Optional
+
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from backend.schemas import ChatRequest, ChatResponse, ResolveRequest
 from orchestration import CustomerServiceOrchestrator
 from quality_safety.evaluation import evaluate_quality_safety
+from shared.config import get_settings
 from shared.database import get_db, init_db
 from shared.store import CustomerServiceStore
 
@@ -26,6 +29,135 @@ def startup():
 
 def get_store(db: Session = Depends(get_db)) -> CustomerServiceStore:
     return CustomerServiceStore(db)
+
+
+def _iso(value):
+    return value.isoformat() if value else None
+
+
+def _database_status() -> dict:
+    url = get_settings().database_url
+    if "supabase.co" in url:
+        label = "Supabase Postgres"
+    elif url.startswith("sqlite"):
+        label = "Local SQLite"
+    elif url.startswith("postgres"):
+        label = "Postgres"
+    else:
+        label = "Configured database"
+    return {
+        "label": label,
+        "server_managed": True,
+        "frontend_direct_supabase": False,
+        "auto_create_tables": True,
+    }
+
+
+def _order_payload(order) -> dict:
+    shipment = order.shipment
+    events = sorted(shipment.events, key=lambda item: item.event_time, reverse=True) if shipment else []
+    return {
+        "id": order.id,
+        "order_id": order.order_id,
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "total_amount": order.total_amount,
+        "shipping_fee": order.shipping_fee,
+        "created_at": _iso(order.created_at),
+        "shipped_at": _iso(order.shipped_at),
+        "received_at": _iso(order.received_at),
+        "customer": {
+            "id": order.customer.id,
+            "name": order.customer.name,
+            "member_level": order.customer.member_level,
+        }
+        if order.customer
+        else None,
+        "items": [
+            {
+                "product_name": item.product_name,
+                "sku": item.sku,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+            }
+            for item in order.items
+        ],
+        "shipment": {
+            "tracking_number": shipment.tracking_number,
+            "carrier_name": shipment.carrier_name,
+            "status": shipment.status,
+            "estimated_delivery": _iso(shipment.estimated_delivery),
+            "events": [
+                {
+                    "time": _iso(event.event_time),
+                    "status": event.status,
+                    "detail": event.detail,
+                    "location": event.location,
+                }
+                for event in events
+            ],
+        }
+        if shipment
+        else None,
+        "refund_count": len(order.refunds),
+    }
+
+
+def _refund_payload(refund) -> dict:
+    order = refund.order
+    return {
+        "id": refund.id,
+        "reason": refund.reason,
+        "amount": refund.amount,
+        "status": refund.status,
+        "review_result": refund.review_result,
+        "created_at": _iso(refund.created_at),
+        "resolved_at": _iso(refund.resolved_at),
+        "order": {
+            "order_id": order.order_id,
+            "status": order.status,
+            "total_amount": order.total_amount,
+            "customer": {
+                "name": order.customer.name,
+                "member_level": order.customer.member_level,
+            }
+            if order and order.customer
+            else None,
+        }
+        if order
+        else None,
+    }
+
+
+def _session_payload(session) -> dict:
+    messages = sorted(session.messages, key=lambda item: item.created_at)
+    last_message = messages[-1] if messages else None
+    last_agent_message = next((msg for msg in reversed(messages) if msg.role == "assistant"), None)
+    return {
+        "id": session.id,
+        "status": session.status,
+        "user_id": session.user_id,
+        "escalated": session.escalated,
+        "message_count": len(messages),
+        "last_message": last_message.content if last_message else "",
+        "last_intent": last_agent_message.intent if last_agent_message else None,
+        "last_agent": last_agent_message.agent if last_agent_message else None,
+        "created_at": _iso(session.created_at),
+        "updated_at": _iso(session.updated_at),
+    }
+
+
+def _escalation_payload(item) -> dict:
+    return {
+        "id": item.id,
+        "session_id": item.session_id,
+        "content": item.content,
+        "emotion_level": item.emotion_level,
+        "emotion_score": item.emotion_score,
+        "escalation_reason": item.escalation_reason,
+        "status": item.status,
+        "created_at": _iso(item.created_at),
+    }
 
 
 @app.get("/api/health")
@@ -94,6 +226,58 @@ def metrics(store: CustomerServiceStore = Depends(get_store)):
     return store.metrics()
 
 
+@app.get("/api/admin/dashboard")
+def dashboard(store: CustomerServiceStore = Depends(get_store)):
+    metrics_data = store.metrics()
+    safety_data = evaluate_quality_safety()
+    recent_sessions = [_session_payload(item) for item in store.list_sessions(limit=6)]
+    recent_orders = [_order_payload(item) for item in store.list_orders(limit=6)]
+    recent_refunds = [_refund_payload(item) for item in store.list_refunds(limit=6)]
+    escalations_data = [_escalation_payload(item) for item in store.list_escalations()[:6]]
+    agent_calls = metrics_data.get("agent_calls", {})
+    agent_status = [
+        {
+            "agent": agent,
+            "calls": agent_calls.get(agent, 0),
+            "status": "active" if agent_calls.get(agent, 0) else "ready",
+        }
+        for agent in ["router", "order", "logistics", "refund", "complaint", "quality_safety"]
+    ]
+    return {
+        "metrics": metrics_data,
+        "safety": safety_data,
+        "database": _database_status(),
+        "agent_status": agent_status,
+        "recent_sessions": recent_sessions,
+        "recent_orders": recent_orders,
+        "recent_refunds": recent_refunds,
+        "open_escalations": escalations_data,
+    }
+
+
+@app.get("/api/admin/orders")
+def admin_orders(
+    limit: int = Query(default=25, ge=1, le=100),
+    status: Optional[str] = None,
+    store: CustomerServiceStore = Depends(get_store),
+):
+    return [_order_payload(item) for item in store.list_orders(limit=limit, status=status)]
+
+
+@app.get("/api/admin/refunds")
+def admin_refunds(
+    limit: int = Query(default=25, ge=1, le=100),
+    status: Optional[str] = None,
+    store: CustomerServiceStore = Depends(get_store),
+):
+    return [_refund_payload(item) for item in store.list_refunds(limit=limit, status=status)]
+
+
+@app.get("/api/admin/sessions")
+def admin_sessions(limit: int = Query(default=20, ge=1, le=100), store: CustomerServiceStore = Depends(get_store)):
+    return [_session_payload(item) for item in store.list_sessions(limit=limit)]
+
+
 @app.get("/api/admin/evaluation/safety")
 def safety_evaluation():
     return evaluate_quality_safety()
@@ -135,19 +319,7 @@ def shared_knowledge(store: CustomerServiceStore = Depends(get_store)):
 
 @app.get("/api/admin/escalations")
 def escalations(store: CustomerServiceStore = Depends(get_store)):
-    return [
-        {
-            "id": item.id,
-            "session_id": item.session_id,
-            "content": item.content,
-            "emotion_level": item.emotion_level,
-            "emotion_score": item.emotion_score,
-            "escalation_reason": item.escalation_reason,
-            "status": item.status,
-            "created_at": item.created_at.isoformat(),
-        }
-        for item in store.list_escalations()
-    ]
+    return [_escalation_payload(item) for item in store.list_escalations()]
 
 
 @app.post("/api/admin/escalations/{complaint_id}/resolve")
