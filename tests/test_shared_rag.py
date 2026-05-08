@@ -9,6 +9,7 @@ from agents.refund import RefundAgent
 from knowledge import KnowledgeRetriever
 from shared import models
 from shared.database import Base
+from shared.vector import EMBEDDING_DIMENSIONS, deterministic_embedding
 from shared.store import CustomerServiceStore
 
 
@@ -88,6 +89,39 @@ def test_shared_rag_retrieves_policy_rules_and_cases():
 
         assert "refund_vip_goodwill_review_v2" in doc_ids
         assert "case_refund_vip_001" in doc_ids
+    finally:
+        db.close()
+
+
+def test_shared_rag_retrieves_vectorized_chunks_on_sqlite_fallback():
+    store, db = _store()
+    try:
+        doc = models.KnowledgeDocument(
+            doc_id="refund_vector_policy",
+            category="refund",
+            title="七天无理由退款向量文档",
+            content="签收后七天内且商品不影响二次销售时，可以申请无理由退货。",
+            keywords=["七天", "无理由", "退款"],
+        )
+        db.add(doc)
+        db.flush()
+        db.add(
+            models.KnowledgeChunk(
+                document_id=doc.id,
+                chunk_index=0,
+                content=doc.content,
+                embedding=deterministic_embedding(doc.content),
+                embedding_model=f"deterministic-hash-{EMBEDDING_DIMENSIONS}",
+            )
+        )
+        db.commit()
+
+        retriever = KnowledgeRetriever(store=store)
+        results = retriever.retrieve("七天无理由退款 二次销售", category="refund", top_k=3)
+
+        assert results[0].doc_id == "refund_vector_policy"
+        assert results[0].chunk_id is not None
+        assert retriever.get_stats()["vector_store"] == "json_fallback"
     finally:
         db.close()
 

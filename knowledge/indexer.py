@@ -1,6 +1,7 @@
 from integrations import OpenAIClient
 from shared import models
 from shared.database import init_db, session_scope
+from shared.vector import embedding_for_text
 
 
 def chunk_text(text: str, size: int = 420, overlap: int = 60) -> list[str]:
@@ -20,8 +21,16 @@ def rebuild_knowledge_index() -> None:
         docs = db.query(models.KnowledgeDocument).all()
         for doc in docs:
             for idx, chunk in enumerate(chunk_text(doc.content)):
-                embedding = client.embed(chunk) if client.available else None
-                db.add(models.KnowledgeChunk(document_id=doc.id, chunk_index=idx, content=chunk, embedding=embedding))
+                embedding, embedding_model = embedding_for_text(chunk, client)
+                db.add(
+                    models.KnowledgeChunk(
+                        document_id=doc.id,
+                        chunk_index=idx,
+                        content=chunk,
+                        embedding=embedding,
+                        embedding_model=embedding_model,
+                    )
+                )
 
 
 if __name__ == "__main__":

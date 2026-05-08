@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, Stri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
+from shared.vector import EMBEDDING_DIMENSIONS, EmbeddingVector
 
 
 class Customer(Base):
@@ -165,7 +166,8 @@ class KnowledgeChunk(Base):
     document_id: Mapped[int] = mapped_column(ForeignKey("knowledge_documents.id"), index=True)
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    embedding: Mapped[Optional[list]] = mapped_column(EmbeddingVector(EMBEDDING_DIMENSIONS), nullable=True)
+    embedding_model: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
 
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")
 

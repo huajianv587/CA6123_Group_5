@@ -47,12 +47,13 @@ def main() -> None:
     from sqlalchemy import text
 
     from shared import models
-    from shared.database import Base, engine
+    from shared.database import engine, init_db
+    from shared.vector import vector_backend_name
 
     print(f"Using DATABASE_URL={_mask_url(database_url)}")
     if args.create_tables:
-        Base.metadata.create_all(bind=engine)
-        print("Tables checked/created.")
+        init_db()
+        print("Tables checked/created; pgvector extension/index setup attempted.")
 
     if args.seed:
         from scripts.seed_data import main as seed_main
@@ -61,14 +62,25 @@ def main() -> None:
 
     with engine.connect() as conn:
         conn.execute(text("select 1"))
+        vector_extension = conn.execute(text("select extversion from pg_extension where extname = 'vector'")).scalar()
+        embedding_type = conn.execute(
+            text(
+                """
+                select udt_name
+                from information_schema.columns
+                where table_name = 'knowledge_chunks' and column_name = 'embedding'
+                """
+            )
+        ).scalar()
         counts = {
             "knowledge_documents": conn.execute(text(f"select count(*) from {models.KnowledgeDocument.__tablename__}")).scalar_one(),
+            "knowledge_chunks": conn.execute(text(f"select count(*) from {models.KnowledgeChunk.__tablename__}")).scalar_one(),
             "policy_rules": conn.execute(text(f"select count(*) from {models.PolicyRule.__tablename__}")).scalar_one(),
             "historical_cases": conn.execute(text(f"select count(*) from {models.HistoricalCase.__tablename__}")).scalar_one(),
             "customer_tags": conn.execute(text(f"select count(*) from {models.CustomerTag.__tablename__}")).scalar_one(),
         }
     print("Supabase verification passed.")
-    print(counts)
+    print({"vector_backend": vector_backend_name(engine), "pgvector_extension": vector_extension, "embedding_column_type": embedding_type, **counts})
 
 
 if __name__ == "__main__":

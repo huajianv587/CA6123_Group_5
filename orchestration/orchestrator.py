@@ -17,10 +17,10 @@ class CustomerServiceOrchestrator:
         self.safety = QualitySafetyAgent(retriever=self.retriever)
         self.router = RouterAgent(llm=self.llm, store=store)
         self.agents = {
-            "order": OrderAgent(store=store),
-            "logistics": LogisticsAgent(store=store),
-            "refund": RefundAgent(store=store, retriever=self.retriever),
-            "complaint": ComplaintAgent(store=store),
+            "order": OrderAgent(store=store, guardrail=self.safety),
+            "logistics": LogisticsAgent(store=store, guardrail=self.safety),
+            "refund": RefundAgent(store=store, retriever=self.retriever, guardrail=self.safety),
+            "complaint": ComplaintAgent(store=store, guardrail=self.safety),
         }
         self.sessions: dict[str, dict] = {}
         self.stats = {
