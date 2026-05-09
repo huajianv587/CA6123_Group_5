@@ -21,7 +21,18 @@ def _normalize_database_url(url: str) -> str:
 
 
 settings = get_settings()
-engine = create_engine(_normalize_database_url(settings.database_url), pool_pre_ping=True)
+_db_url = _normalize_database_url(settings.database_url)
+_is_sqlite = _db_url.startswith("sqlite")
+engine = create_engine(
+    _db_url,
+    pool_pre_ping=True,
+    **({"connect_args": {"check_same_thread": False, "timeout": 20}} if _is_sqlite else {}),
+)
+if _is_sqlite:
+    # WAL mode: allows concurrent reads while a write is in progress
+    with engine.begin() as _conn:
+        _conn.execute(text("PRAGMA journal_mode=WAL"))
+        _conn.execute(text("PRAGMA busy_timeout=10000"))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 

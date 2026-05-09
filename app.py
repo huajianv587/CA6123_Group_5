@@ -20,18 +20,15 @@ st.set_page_config(
 # ── 懒加载后端（避免影响页面渲染）──────────────────────────
 @st.cache_resource
 def load_orchestrator():
-    from shared.database import init_db, session_scope
-    from shared.store import CustomerServiceStore
+    from shared.database import init_db
     from orchestration import CustomerServiceOrchestrator
     try:
         init_db()
-        scope = session_scope()
-        db = scope.__enter__()
-        store = CustomerServiceStore(db)
-        orch = CustomerServiceOrchestrator(store=store)
+        # No persistent session — store is injected per-request in send_message()
+        # to avoid SQLite "database is locked" and PendingRollbackError across rerenders
+        orch = CustomerServiceOrchestrator()
         return orch, "connected"
     except Exception as e:
-        from orchestration import CustomerServiceOrchestrator
         return CustomerServiceOrchestrator(), f"memory:{e}"
 
 # ── CSS ─────────────────────────────────────────────────────
@@ -233,13 +230,34 @@ from knowledge.faq_store import FAQ_DOCUMENTS
 
 # ── 辅助函数 ─────────────────────────────────────────────
 def send_message(user_input: str):
+    from shared.database import session_scope
+    from shared.store import CustomerServiceStore
+
     orch = st.session_state.orch
     buf = io.StringIO()
     t0 = time.perf_counter()
-    with contextlib.redirect_stdout(buf):
-        result = orch.process_message(
-            user_input, st.session_state.session_id, user_id=101
-        )
+
+    # Fresh session per request — prevents PendingRollbackError and SQLite lock accumulation
+    with session_scope() as db:
+        store = CustomerServiceStore(db)
+        orch.store = store
+        if hasattr(orch, "retriever"):
+            orch.retriever.store = store
+        for agent in orch.agents.values():
+            agent.store = store
+
+        with contextlib.redirect_stdout(buf):
+            result = orch.process_message(
+                user_input, st.session_state.session_id, user_id=101
+            )
+
+    # Detach store refs so no code touches the closed session after this point
+    orch.store = None
+    if hasattr(orch, "retriever"):
+        orch.retriever.store = None
+    for agent in orch.agents.values():
+        agent.store = None
+
     elapsed = (time.perf_counter() - t0) * 1000
     st.session_state.session_id = result.get("session_id", st.session_state.session_id)
 
