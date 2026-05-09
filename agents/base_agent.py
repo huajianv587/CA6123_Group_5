@@ -60,12 +60,14 @@ class AgentResponse:
 
 
 class BaseAgent(ABC):
-    def __init__(self, agent_id: str, name: str, retriever=None, store=None, llm=None):
+    def __init__(self, agent_id: str, name: str, retriever=None, store=None, llm=None, guardrail=None):
         self.agent_id = agent_id
         self.name = name
         self._retriever = retriever
         self.store = store
         self.llm = llm
+        self.guardrail = guardrail
+        self._guardrail = guardrail
         self.message_history: list[Message] = []
 
     @abstractmethod

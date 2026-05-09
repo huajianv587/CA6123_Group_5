@@ -2,9 +2,13 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
 from integrations import OpenAIClient
 from knowledge.faq_store import FAQ_DOCUMENTS
 from shared import models
+from shared.vector import embedding_for_text, normalize_embedding, pgvector_literal, vector_backend_name
 
 
 @dataclass
@@ -46,31 +50,96 @@ class KnowledgeRetriever:
         return self._memory_retrieve(query, top_k=top_k, category=category)
 
     def _db_retrieve(self, query: str, top_k: int, category: Optional[str]) -> list[RetrievalResult]:
-        docs_query = self.store.db.query(models.KnowledgeDocument)
-        if category:
-            docs_query = docs_query.filter(models.KnowledgeDocument.category == category)
-        docs = docs_query.all()
-        scored = []
-        query_vec = self.llm.embed(query) if self.llm else None
-        for doc in docs:
-            chunk_rows = doc.chunks or []
-            if query_vec and chunk_rows and any(chunk.embedding for chunk in chunk_rows):
-                for chunk in chunk_rows:
-                    score = self._cosine(query_vec, chunk.embedding or [])
-                    scored.append((score, doc, chunk.content, chunk.id))
-            else:
-                haystack = f"{doc.title} {doc.content} {' '.join(doc.keywords or [])}"
-                score = self._keyword_score(query, haystack, doc.keywords or [])
-                scored.append((score, doc, doc.content, None))
-        results = [
-            RetrievalResult(doc_id=doc.doc_id, chunk_id=chunk_id, category=doc.category, source_title=doc.title, content=content, score=score)
-            for score, doc, content, chunk_id in scored
-            if score >= self.score_threshold
-        ]
+        query_vec, _model = embedding_for_text(query, self.llm)
+        vector_results = self._pgvector_retrieve(query_vec, top_k=max(top_k * 3, top_k), category=category)
+        if not vector_results:
+            vector_results = self._python_vector_retrieve(query, query_vec, category)
+
+        results = [item for item in vector_results if item.score >= self.score_threshold]
         results.extend(self._policy_rule_results(query, category))
         results.extend(self._historical_case_results(query, category))
         results.sort(key=lambda item: item.score, reverse=True)
         return results[:top_k]
+
+    def _python_vector_retrieve(self, query: str, query_vec: list[float], category: Optional[str]) -> list[RetrievalResult]:
+        docs_query = self.store.db.query(models.KnowledgeDocument)
+        if category:
+            docs_query = docs_query.filter(models.KnowledgeDocument.category == category)
+        docs = docs_query.all()
+        results = []
+        for doc in docs:
+            chunk_rows = doc.chunks or []
+            if query_vec and chunk_rows and any(normalize_embedding(chunk.embedding) for chunk in chunk_rows):
+                for chunk in chunk_rows:
+                    score = self._cosine(query_vec, normalize_embedding(chunk.embedding) or [])
+                    results.append(
+                        RetrievalResult(
+                            doc_id=doc.doc_id,
+                            chunk_id=chunk.id,
+                            category=doc.category,
+                            source_title=doc.title,
+                            content=chunk.content,
+                            score=score,
+                        )
+                    )
+            else:
+                haystack = f"{doc.title} {doc.content} {' '.join(doc.keywords or [])}"
+                score = self._keyword_score(query, haystack, doc.keywords or [])
+                results.append(
+                    RetrievalResult(
+                        doc_id=doc.doc_id,
+                        chunk_id=None,
+                        category=doc.category,
+                        source_title=doc.title,
+                        content=doc.content,
+                        score=score,
+                    )
+                )
+        return results
+
+    def _pgvector_retrieve(self, query_vec: list[float], top_k: int, category: Optional[str]) -> list[RetrievalResult]:
+        bind = self.store.db.get_bind()
+        if vector_backend_name(bind) != "pgvector":
+            return []
+
+        where = ["c.embedding IS NOT NULL"]
+        params = {"query_embedding": pgvector_literal(query_vec), "limit": top_k}
+        if category:
+            where.append("d.category = :category")
+            params["category"] = category
+
+        stmt = text(
+            f"""
+            SELECT
+                d.doc_id,
+                c.id AS chunk_id,
+                d.category,
+                d.title AS source_title,
+                c.content,
+                1 - (c.embedding <=> CAST(:query_embedding AS vector)) AS score
+            FROM knowledge_chunks c
+            JOIN knowledge_documents d ON d.id = c.document_id
+            WHERE {' AND '.join(where)}
+            ORDER BY c.embedding <=> CAST(:query_embedding AS vector)
+            LIMIT :limit
+            """
+        )
+        try:
+            rows = self.store.db.execute(stmt, params).mappings().all()
+        except SQLAlchemyError:
+            return []
+
+        return [
+            RetrievalResult(
+                doc_id=row["doc_id"],
+                chunk_id=row["chunk_id"],
+                category=row["category"],
+                source_title=row["source_title"],
+                content=row["content"],
+                score=float(row["score"] or 0),
+            )
+            for row in rows
+        ]
 
     def _policy_rule_results(self, query: str, category: Optional[str]) -> list[RetrievalResult]:
         if not hasattr(self.store, "list_active_policy_rules"):
@@ -146,6 +215,7 @@ class KnowledgeRetriever:
         historical_cases = self.store.db.query(models.HistoricalCase).count()
         return {
             "source": "database",
+            "vector_store": vector_backend_name(self.store.db.get_bind()),
             "total_documents": total,
             "total_chunks": chunks,
             "policy_rules": policy_rules,

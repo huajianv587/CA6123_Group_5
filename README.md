@@ -316,6 +316,8 @@ The RAG layer is designed for business grounding rather than generic document se
 | Customer tags | VIP, risk, category, and customer-level context |
 | Knowledge documents | Shared service knowledge for support teams |
 
+Knowledge chunks are stored with vector embeddings. On Supabase/Postgres the project uses the `pgvector` extension with a `vector(1536)` embedding column and an HNSW cosine index on `knowledge_chunks.embedding`. Local SQLite tests keep the same Python interface but store embeddings as JSON, so contributors can run the project without a local Postgres server. Retrieval first tries database vector search, then falls back to the in-process cosine and keyword scorer when a vector index is unavailable.
+
 The refund path uses RAG most directly. The system can combine customer level, product category, refund reason, and policy constraints before producing a recommendation or escalating the case. This keeps service answers more grounded than a generic chatbot response.
 
 ---

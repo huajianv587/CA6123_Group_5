@@ -7,9 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from integrations import OpenAIClient
 from knowledge.faq_store import FAQ_DOCUMENTS
+from knowledge.indexer import chunk_text
 from shared import models
 from shared.database import init_db, session_scope
+from shared.vector import embedding_for_text
 
 
 PRODUCTS = [
@@ -198,8 +201,32 @@ def seed_knowledge(db):
             "answer": f"这是 {category} 场景的演示知识文档，用于测试 RAG 检索、引用来源和客服回答生成。",
             "keywords": [category, "演示", "规则"],
         })
+    client = OpenAIClient()
+    created_docs = []
     for doc in docs:
-        db.add(models.KnowledgeDocument(doc_id=doc["id"], category=doc["category"], title=doc["question"], content=doc["answer"], keywords=doc["keywords"]))
+        record = models.KnowledgeDocument(
+            doc_id=doc["id"],
+            category=doc["category"],
+            title=doc["question"],
+            content=doc["answer"],
+            keywords=doc["keywords"],
+        )
+        db.add(record)
+        created_docs.append(record)
+    db.flush()
+
+    for doc in created_docs:
+        for idx, chunk in enumerate(chunk_text(doc.content)):
+            embedding, embedding_model = embedding_for_text(chunk, client)
+            db.add(
+                models.KnowledgeChunk(
+                    document_id=doc.id,
+                    chunk_index=idx,
+                    content=chunk,
+                    embedding=embedding,
+                    embedding_model=embedding_model,
+                )
+            )
 
 
 def seed_policy_rules(db):
@@ -355,7 +382,7 @@ def main():
         seed_policy_rules(db)
         seed_historical_cases(db)
         seed_customer_tags(db, customers)
-    print("Seed data created: 20 customers, 100 orders, shipments, refunds, complaints, shared knowledge, policy rules, historical cases, customer tags.")
+    print("Seed data created: 20 customers, 100 orders, shipments, refunds, complaints, shared knowledge chunks, policy rules, historical cases, customer tags.")
 
 
 if __name__ == "__main__":
