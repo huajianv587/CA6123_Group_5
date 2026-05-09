@@ -45,11 +45,28 @@ class RefundAgent(BaseAgent):
 
     def process(self, message: Message) -> AgentResponse:
         text = message.content
+        data = message.data
+        emotion_info  = data.get("emotion_level", {})
+        emotion_score = emotion_info.get("score", 0) if isinstance(emotion_info, dict) else 0
+        session_history = data.get("session_history", [])
+
+        # ══ Layer 1 · 输入层护栏 ══════════════════════
+        guard_result = self._run_input_guard(text, emotion_score, session_history)
+        if guard_result and guard_result.blocked:
+            return AgentResponse(
+                False,
+                guard_result.block_reason,
+                need_escalate=guard_result.escalate_to_human,
+                escalate_reason="护栏拦截：" + "、".join(guard_result.triggered_rules),
+                data={"action": "blocked", "guard": guard_result.to_dict()},
+            )
+
         if self._is_policy_query(text):
             return self._policy(text)
-        data = message.data.get("extracted_data", {})
-        order_id = data.get("order_id")
-        reason = data.get("refund_reason") or self._reason(text)
+
+        ext = data.get("extracted_data", {})
+        order_id = ext.get("order_id")
+        reason = ext.get("refund_reason") or self._reason(text)
         if not order_id:
             return AgentResponse(False, "申请退款需要提供订单号。", data={"need_info": "order_id"})
         if not self.store:
@@ -85,6 +102,11 @@ class RefundAgent(BaseAgent):
                 rag_sources=rag_sources,
             )
 
+        # ══ Layer 2 · 处理层 — 敏感操作二次确认 ══════
+        sensitive_block = self._run_sensitive_guard(text, emotion_score)
+        if sensitive_block:
+            return AgentResponse(False, sensitive_block, data={"action": "sensitive_blocked"})
+
         amount = self._amount(order, reason)
         refund = self.store.create_refund(order, reason, amount, status="pending")
         historical_cases = self._historical_cases("refund")
@@ -103,6 +125,10 @@ class RefundAgent(BaseAgent):
             msg += "\n\n参考政策：\n" + self.format_rag_context(rag_results, max_chars=360)
         if historical_cases:
             msg += "\n\n相似历史案例：\n" + "\n".join(f"- {case['title']}：{case['outcome']}" for case in historical_cases[:2])
+
+        # ══ Layer 3 · 输出层合规复审 ══════════════════
+        msg = self._run_output_guard(msg, emotion_score)
+
         return AgentResponse(
             True,
             msg,
@@ -120,6 +146,44 @@ class RefundAgent(BaseAgent):
             rag_used=bool(rag_results),
             rag_sources=rag_sources,
         )
+
+    # ══════════════════════════════════════════
+    # 护栏调用（隔离护栏与业务）
+    # ══════════════════════════════════════════
+
+    def _run_input_guard(self, text, emotion_score, session_history):
+        if self._guardrail is None:
+            return None
+        try:
+            result = self._guardrail.check_input(text, emotion_score, session_history)
+            if result.triggered_rules:
+                self.log(
+                    f"[Guard·输入层] level={result.risk_level} "
+                    f"score={result.rule_score:.1f} "
+                    f"rules={result.triggered_rules}"
+                )
+            return result
+        except Exception as e:
+            self.log(f"[Guard·输入层] 异常（{e}），跳过")
+            return None
+
+    def _run_sensitive_guard(self, text, emotion_score):
+        if self._guardrail is None:
+            return None
+        try:
+            return self._guardrail.check_sensitive_operation(text, emotion_score)
+        except Exception as e:
+            self.log(f"[Guard·处理层] 异常（{e}），跳过")
+            return None
+
+    def _run_output_guard(self, response: str, emotion_score) -> str:
+        if self._guardrail is None:
+            return response
+        try:
+            return self._guardrail.check_output(response, emotion_score)
+        except Exception as e:
+            self.log(f"[Guard·输出层] 异常（{e}），跳过")
+            return response
 
     def _policy(self, text: str) -> AgentResponse:
         results = self.retrieve_knowledge(text, top_k=3, category_filter="refund")

@@ -1,134 +1,310 @@
-from agents.base_agent import AgentResponse, BaseAgent, Message
+"""
+投诉Agent v2 — 集成情绪·意图双层护栏 + Supabase 持久化
+业务逻辑：情绪三级感知 + 安抚话术 + 人工升级
+护栏逻辑：由注入的 QualitySafetyAgent 实例承担，通过私有方法调用
+"""
+from typing import Dict, List, Optional
+from agents.base_agent import BaseAgent, Message, AgentResponse, IntentType
 
 
 SOOTHE_TEMPLATES = {
     "anger": [
         "非常抱歉给您带来了不好的体验，我完全理解您现在的心情。",
         "您的感受完全可以理解，我们有责任为您解决这个问题。",
+        "这确实是我们服务的失误，您的愤怒完全合理，请给我一次机会处理。",
     ],
     "threat": [
         "您的诉求我已经认真记录，会第一时间为您跟进处理。",
-        "您有权通过正规渠道维权，同时我也会尽力在这里推进问题解决。",
+        "我理解您希望问题尽快得到解决，请允许我为您安排优先处理。",
+        "您有权通过任何方式维权，同时我们也希望能在这里为您解决问题。",
     ],
     "agitation": [
         "非常抱歉让您有这样的感受，请告诉我具体发生了什么。",
-        "我能感受到您的失望，我会认真对待您的诉求。",
+        "您的反馈对我们很重要，我来帮您认真处理这个问题。",
+        "我能感受到您的失望，请相信我会认真对待您的每一个诉求。",
     ],
     "general": [
         "感谢您联系我们，我会尽力帮助您解决问题。",
         "我理解您的情况，让我来帮您处理。",
+        "非常抱歉给您带来不便，请告诉我具体情况，我来跟进。",
     ],
 }
 
-
-SCENARIO_TEMPLATES = [
-    (
-        ["没到", "慢", "等太久", "延迟", "还没收到", "什么时候到"],
-        "关于配送延迟，我会协助您核查物流状态；如确认超出承诺时效，可继续申请补偿、补发或人工核查。",
-    ),
-    (
-        ["质量", "坏", "破", "瑕疵", "故障", "损坏", "有问题"],
-        "如涉及质量问题，我们可以协助您发起退款、换货或补偿审核，请补充订单号和问题照片。",
-    ),
-    (
-        ["态度", "客服", "不理", "不回复", "没人管", "联系不上"],
-        "对于服务响应问题我会记录并反馈，同时继续跟进当前问题直到有明确处理结果。",
-    ),
-    (
-        ["发错", "不对", "少发", "漏发", "错发", "不是我要的"],
-        "如果存在错发、漏发或商品不符，我们可以协助核实并发起补发、退换货或赔付流程。",
-    ),
-    (
-        ["退款没到", "退款慢", "退款多久", "还没退"],
-        "退款到账通常需要 3-7 个工作日，具体取决于支付方式；请提供订单号，我可以帮您核查进度。",
-    ),
-]
+SCENARIO_TEMPLATES = {
+    "delivery_delay": {
+        "triggers": ["没到", "慢", "等太久", "延迟", "还没收到", "几天了", "什么时候到"],
+        "response": (
+            "\n\n关于配送延迟，我会立即协助您核查物流状态。"
+            "如确认延误超出承诺时效，可申请配送补偿或优先重新发货。"
+            "请提供您的订单号，我来为您查询。"
+        ),
+    },
+    "quality_issue": {
+        "triggers": ["质量", "坏", "破", "瑕疵", "故障", "坏掉", "损坏", "有问题"],
+        "response": (
+            "\n\n质量问题我们承担全责，您可以选择：\n"
+            "① 全额退款  ② 换货补发  ③ 部分补偿\n"
+            "请告知您的偏好，我来为您发起对应申请。"
+        ),
+    },
+    "service_issue": {
+        "triggers": ["态度", "客服", "不理", "不回复", "没人管", "已读不回", "爱答不理"],
+        "response": (
+            "\n\n对于服务态度问题我深表歉意，会将您的反馈记录并反馈给服务主管，"
+            "并亲自跟进您的问题直到解决。这不是我们应有的服务水准。"
+        ),
+    },
+    "wrong_item": {
+        "triggers": ["发错", "不对", "少发", "漏发", "错发", "不是我要的"],
+        "response": (
+            "\n\n发错货是我们的失误，我们会立即安排补发正确商品。"
+            "错误商品您可以选择退回（运费我们承担）或保留，请告知您的偏好。"
+        ),
+    },
+    "refund_delay": {
+        "triggers": ["退款没到", "退款慢", "退款多久", "还没退", "等了很久退款"],
+        "response": (
+            "\n\n退款到账通常需要 3-7 个工作日，具体取决于支付方式。"
+            "请提供订单号，我来为您核查退款进度，如有异常立即处理。"
+        ),
+    },
+    "no_response": {
+        "triggers": ["没有回音", "没人理", "联系不上", "打不通", "一直没消息"],
+        "response": (
+            "\n\n非常抱歉让您长时间等待无回应，这是我们的服务失误。"
+            "我现在为您优先处理，请告知您等待回复的具体问题，我来直接跟进。"
+        ),
+    },
+}
 
 
 class ComplaintAgent(BaseAgent):
-    def __init__(self, store=None, **kwargs):
-        super().__init__("complaint", "ComplaintAgent", store=store, **kwargs)
-        self.weights = {
-            "angry": (["生气", "愤怒", "垃圾", "太差", "离谱", "恶心", "气死", "骗子", "欺诈"], 2.0),
-            "threat": (["投诉", "12315", "曝光", "律师", "法院", "媒体", "起诉", "报警", "仲裁"], 2.8),
-            "human": (["人工", "经理", "主管", "负责人", "真人"], 2.0),
-            "urgent": (["马上", "立刻", "现在", "赶紧", "必须", "否则", "不然"], 1.5),
-        }
-        self._complaint_counts: dict[str, int] = {}
+
+    def __init__(self, store=None, guardrail=None, **kwargs):
+        super().__init__("complaint", "ComplaintAgent", store=store, guardrail=guardrail, **kwargs)
+        self._complaint_counts: Dict[str, int] = {}
+
+    # ══════════════════════════════════════════
+    # 主处理入口
+    # ══════════════════════════════════════════
 
     def process(self, message: Message) -> AgentResponse:
-        emotion = self._emotion(message.content, message.data.get("emotion_level", {}))
-        complaint_count = self._increment_complaint_count(message.session_id or "default")
-        needs_escalation, reason = self._needs_escalation(emotion, complaint_count)
-        user_id = message.data.get("user_id")
-        if self.store:
-            self.store.create_complaint(
-                session_id=message.session_id,
-                user_id=user_id,
-                content=message.content,
-                emotion_level=emotion["level"],
-                emotion_score=emotion["total_score"],
-                escalation_reason=reason if needs_escalation else None,
-                status="open" if needs_escalation else "handled",
-            )
-        if needs_escalation:
+        content      = message.content
+        session_id   = message.session_id
+        data         = message.data
+        emotion_info = data.get("emotion_level", {})
+        emotion_score: int = emotion_info.get("score", 0)
+        emotion_level: str = emotion_info.get("level", "low")
+
+        self.log(f"处理投诉: emotion={emotion_level}({emotion_score}) | {content[:40]}")
+
+        session_history: List[Dict] = data.get("session_history", [])
+
+        # ══ Layer 1 · 输入层护栏 ══════════════════════
+        guard_result = self._run_input_guard(content, emotion_score, session_history)
+        if guard_result and guard_result.blocked:
+            self._record_complaint(message, emotion_level, emotion_score, needs_escalation=True,
+                                   escalate_reason="guardrail_blocked")
             return AgentResponse(
-                True,
-                f"已为您升级人工客服。\n升级原因：{reason}\n当前会优先处理您的问题，请保持联系方式畅通。",
-                data={"emotion_analysis": emotion, "action": "escalate"},
-                need_escalate=True,
-                escalate_reason=reason,
+                success=False,
+                message=guard_result.block_reason,
+                need_escalate=guard_result.escalate_to_human,
+                escalate_reason="护栏拦截：" + "、".join(guard_result.triggered_rules),
+                data={"action": "blocked", "guard": guard_result.to_dict()},
             )
+
+        # ══ Layer 2 · 处理层 — 敏感操作拦截 ══════════
+        sensitive_block = self._run_sensitive_guard(content, emotion_score)
+        if sensitive_block:
+            return AgentResponse(
+                success=False,
+                message=sensitive_block,
+                data={"action": "sensitive_blocked"},
+            )
+
+        count = self._increment_complaint_count(session_id)
+
+        # ── 情绪三级分流 ─────────────────────────────
+        needs_escalation = self._should_escalate(emotion_score, emotion_level, content, count)
+        escalate_reason  = self._escalate_reason(emotion_score, content, guard_result) if needs_escalation else None
+        self._record_complaint(message, emotion_level, emotion_score, needs_escalation, escalate_reason)
+
+        if needs_escalation:
+            return self._escalate_response(escalate_reason, emotion_score, guard_result)
+
+        # ── 生成安抚响应 ──────────────────────────────
+        response_text = self._generate_soothe(content, emotion_level, emotion_score, count)
+
+        # ══ Layer 3 · 输出层合规复审 ══════════════════
+        response_text = self._run_output_guard(response_text, emotion_score)
+
         return AgentResponse(
-            True,
-            self._comfort(message.content, emotion, complaint_count),
-            data={"emotion_analysis": emotion, "complaint_count": complaint_count, "action": "comfort"},
+            success=True,
+            message=response_text,
+            data={
+                "action": "soothe",
+                "emotion_level": emotion_level,
+                "emotion_score": emotion_score,
+                "complaint_count": count,
+                "guard": guard_result.to_dict() if guard_result else {},
+            },
         )
 
-    def _emotion(self, text: str, router_emotion: dict) -> dict:
-        scores = {}
-        total = 0.0
-        for key, (keywords, weight) in self.weights.items():
-            score = sum(text.count(k) for k in keywords) * weight
-            scores[key] = score
-            total += score
-        router_score = router_emotion.get("total_score", 0) if isinstance(router_emotion, dict) else 0
-        total = max(total, float(router_score or 0))
-        level = "high" if total >= 6 else "medium" if total >= 2.5 else "low"
-        return {"level": level, "total_score": total, "scores": scores}
+    # ══════════════════════════════════════════
+    # Store 持久化
+    # ══════════════════════════════════════════
 
-    def _needs_escalation(self, emotion: dict, complaint_count: int) -> tuple[bool, str]:
-        reasons = []
-        if emotion["total_score"] >= 6:
-            reasons.append("情绪强烈")
-        if emotion["scores"].get("threat", 0) >= 2.8:
-            reasons.append("涉及投诉/曝光/法律风险")
-        if emotion["scores"].get("human", 0) >= 2:
-            reasons.append("用户明确要求人工")
+    def _record_complaint(
+        self,
+        message: Message,
+        emotion_level: str,
+        emotion_score: int,
+        needs_escalation: bool,
+        escalate_reason: Optional[str] = None,
+    ) -> None:
+        if not self.store:
+            return
+        try:
+            self.store.create_complaint(
+                session_id=message.session_id,
+                user_id=message.data.get("user_id"),
+                content=message.content,
+                emotion_level=emotion_level,
+                emotion_score=float(emotion_score),
+                escalation_reason=escalate_reason if needs_escalation else None,
+                status="open" if needs_escalation else "handled",
+            )
+        except Exception as e:
+            self.log(f"[store.create_complaint] 异常（{e}），跳过")
+
+    # ══════════════════════════════════════════
+    # 护栏调用（隔离护栏与业务）
+    # ══════════════════════════════════════════
+
+    def _run_input_guard(self, content, emotion_score, history):
+        if self._guardrail is None:
+            return None
+        try:
+            result = self._guardrail.check_input(content, emotion_score, history)
+            if result.triggered_rules:
+                self.log(
+                    f"[Guard·输入层] level={result.risk_level} "
+                    f"score={result.rule_score:.1f} "
+                    f"rules={result.triggered_rules}"
+                )
+            return result
+        except Exception as e:
+            self.log(f"[Guard·输入层] 异常（{e}），跳过")
+            return None
+
+    def _run_sensitive_guard(self, content, emotion_score) -> Optional[str]:
+        if self._guardrail is None:
+            return None
+        try:
+            return self._guardrail.check_sensitive_operation(content, emotion_score)
+        except Exception as e:
+            self.log(f"[Guard·处理层] 异常（{e}），跳过")
+            return None
+
+    def _run_output_guard(self, response: str, emotion_score: int) -> str:
+        if self._guardrail is None:
+            return response
+        try:
+            return self._guardrail.check_output(response, emotion_score)
+        except Exception as e:
+            self.log(f"[Guard·输出层] 异常（{e}），跳过")
+            return response
+
+    # ══════════════════════════════════════════
+    # 情绪三级感知业务逻辑
+    # ══════════════════════════════════════════
+
+    def _should_escalate(
+        self, emotion_score: int, emotion_level: str, content: str, complaint_count: int
+    ) -> bool:
+        if emotion_score >= 8:
+            return True
+        if any(w in content for w in ["曝光", "投诉", "12315", "法院", "律师", "起诉", "媒体"]):
+            return True
+        if any(w in content for w in ["转人工", "找经理", "要人工", "人工客服", "不要机器人"]):
+            return True
         if complaint_count >= 3:
-            reasons.append("同一会话重复投诉")
-        return bool(reasons), "；".join(reasons)
+            return True
+        return False
 
-    def _comfort(self, text: str, emotion: dict, complaint_count: int) -> str:
-        template_key = "general"
-        if emotion["scores"].get("threat", 0) >= 2.8:
+    def _escalate_reason(self, emotion_score: int, content: str, guard_result) -> str:
+        guard_info  = guard_result.to_dict() if guard_result else {}
+        progressive = guard_info.get("progressive_jailbreak", False)
+        parts = []
+        if emotion_score >= 8:
+            parts.append(f"情绪分={emotion_score}")
+        if progressive:
+            parts.append("渐进式越狱检测命中")
+        if any(w in content for w in ["曝光", "投诉", "12315"]):
+            parts.append("威胁性词汇")
+        if any(w in content for w in ["转人工", "找经理"]):
+            parts.append("明确要求人工")
+        return "、".join(parts) if parts else "高风险会话"
+
+    def _escalate_response(self, escalate_reason: str, emotion_score: int, guard_result) -> AgentResponse:
+        guard_info = guard_result.to_dict() if guard_result else {}
+        msg = (
+            "非常抱歉给您带来了不好的体验！\n\n"
+            "您的问题已被列为优先处理，正在为您安排专属人工客服，"
+            "预计 5 秒内接入，请稍候。\n\n"
+            "感谢您的耐心，我们一定妥善解决您的问题。"
+        )
+        return AgentResponse(
+            success=True,
+            message=msg,
+            need_escalate=True,
+            escalate_reason=escalate_reason,
+            data={"action": "escalate", "emotion_score": emotion_score, "guard": guard_info},
+        )
+
+    def _generate_soothe(
+        self, content: str, emotion_level: str, emotion_score: int, complaint_count: int
+    ) -> str:
+        import random
+
+        if any(kw in content for kw in ["曝光", "投诉", "起诉", "律师", "12315", "法院"]):
             template_key = "threat"
-        elif emotion["scores"].get("angry", 0) >= 2:
+        elif any(kw in content for kw in ["气死", "愤怒", "骗子", "欺诈", "混蛋", "垃圾"]):
             template_key = "anger"
-        elif emotion["level"] == "medium":
+        elif emotion_level == "medium":
             template_key = "agitation"
+        else:
+            template_key = "general"
 
-        opener = SOOTHE_TEMPLATES[template_key][min(complaint_count - 1, len(SOOTHE_TEMPLATES[template_key]) - 1)]
-        scenario = "请补充订单号、问题照片或物流单号，我会继续为您处理。"
-        for keywords, response in SCENARIO_TEMPLATES:
-            if any(keyword in text for keyword in keywords):
-                scenario = response
+        opener = random.choice(SOOTHE_TEMPLATES[template_key])
+
+        scenario_body = ""
+        for cfg in SCENARIO_TEMPLATES.values():
+            if any(t in content for t in cfg["triggers"]):
+                scenario_body = cfg["response"]
                 break
 
-        repeat_note = ""
-        if complaint_count >= 2:
-            repeat_note = "\n我注意到您已经多次反馈，非常抱歉还没有解决，我会重点跟进。"
-        return f"{opener}\n{scenario}{repeat_note}"
+        if scenario_body:
+            level_body = "\n\n我已将您的问题列为优先处理，请稍候。" if emotion_level == "high" \
+                    else "\n\n我会认真跟进，争取给您一个满意的答复。" if emotion_level == "medium" \
+                    else ""
+        else:
+            if emotion_level == "high":
+                level_body = (
+                    "\n\n我注意到您情绪比较激动，我非常理解。"
+                    "请您告诉我具体是哪个订单出现了问题，"
+                    "我来为您优先核实并给出解决方案。"
+                )
+            elif emotion_level == "medium":
+                level_body = "\n\n请告诉我您遇到的具体问题，我会认真帮您处理，争取给您一个满意的答复。"
+            else:
+                level_body = "\n\n请告诉我您的具体情况，我来帮您解决。"
+
+        repeat_note = (
+            "\n\n我注意到您已经联系我们多次，非常抱歉还没有解决您的问题，我会重点跟进。"
+            if complaint_count >= 2 else ""
+        )
+        return opener + scenario_body + level_body + repeat_note
 
     def _increment_complaint_count(self, session_id: str) -> int:
         self._complaint_counts[session_id] = self._complaint_counts.get(session_id, 0) + 1
