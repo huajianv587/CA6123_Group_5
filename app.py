@@ -439,64 +439,208 @@ with col_chat:
                 send_message(msg); st.rerun()
 
 # ══════════════════════════════════════════
-# 中栏：知识规则库
+# 中栏：意图→实体→规则 映射 + 相关知识库
 # ══════════════════════════════════════════
+
+# 静态规则表（intent → 适用规则列表）
+INTENT_RULES = {
+    "order": [
+        ("待发货",   "可取消订单 / 可修改地址，实时生效"),
+        ("已发货",   "无法直接取消，拒收后 3 工作日退款"),
+        ("已签收",   "支持七天无理由或质量问题售后"),
+        ("退款时效", "审核 1-3 工作日 → 到账 3-7 工作日"),
+    ],
+    "logistics": [
+        ("顺丰 SF",  "次日达（省内）/ 2-3 日（跨省）· 客服 95338"),
+        ("京东 JD",  "次日达 / 隔日达（部分城市当日）"),
+        ("圆通 YT",  "3-5 个工作日 · 客服 95554"),
+        ("签收异常", "查家人/驿站代收 → 联系承运商 → 补发/退款"),
+        ("物流停滞", "48h 无更新正常；5 个工作日无更新申请调查"),
+    ],
+    "refund": [
+        ("质量问题", "不限时间 · 运费卖家承担 · 建议附照片凭证"),
+        ("七天无理由","签收 7 日内 · 原包装未使用 · 运费买家承担"),
+        ("发错/不符", "不限时间 · 运费卖家承担 · 留证据截图"),
+        ("退款时效",  "审核 1-3 工作日 → 原路退回 3-7 工作日"),
+    ],
+    "complaint": [
+        ("情绪分 < 3",  "安抚话术 → 记录诉求 → 推进流程"),
+        ("情绪分 3-7",  "优先安抚 → 给出解决方案 → 承诺跟进"),
+        ("情绪分 ≥ 8",  "立即升级人工 → 5s 内接入"),
+        ("威胁/维权词", "Guard 拦截 + HITL 队列"),
+        ("要求人工",    "直接路由，不再机器人应答"),
+    ],
+    "safety": [
+        ("提示词注入",  "bypass / 忽略指令 → 直接拒绝"),
+        ("PII 脱敏",    "手机/地址/邮箱自动脱敏存储"),
+        ("高风险退款",  "金额 > ¥5000 → HITL 人工复核"),
+        ("低置信路由",  "confidence < 0.6 → fallback + 人工兜底"),
+    ],
+    "unknown": [
+        ("兜底策略", "置信度不足 → 反问澄清 → 人工兜底"),
+    ],
+}
+
+ENTITY_LABELS = {
+    "order_id":        ("订单号",   "#388bfd"),
+    "tracking_number": ("快递单号", "#3fb950"),
+    "phone":           ("手机号",   "#a371f7"),
+    "refund_reason":   ("退款原因", "#f0883e"),
+}
+
 with col_kb:
-    st.markdown('<div class="sec">📚 知识规则库</div>', unsafe_allow_html=True)
-    active_ids = st.session_state.active_kb
-    kb_html = f'<div class="card" style="height:calc(100vh - 130px);overflow-y:auto">'
+    st.markdown('<div class="sec">🔗 意图 · 实体 · 规则</div>', unsafe_allow_html=True)
 
-    for cat_key, (cat_label, cat_color) in KB_CATS.items():
-        docs = [d for d in FAQ_DOCUMENTS if d["category"] == cat_key]
-        hits = sum(1 for d in docs if d["id"] in active_ids)
-        hit_tag = (f'<span style="background:{cat_color}22;color:{cat_color};'
-                   f'border-radius:4px;padding:1px 7px;font-size:10px;margin-left:6px">●{hits}</span>'
-                   if hits else "")
-        kb_html += f'<div class="kb-cat" style="border-left-color:{cat_color}">{cat_label}{hit_tag}</div>'
+    a = st.session_state.analysis
 
-        if not docs:
-            # 静态内容（无 FAQ 条目的分类）
-            static = {
-                "order": [
-                    ("待发货", "支持修改地址、取消订单，实时生效"),
-                    ("已发货", "需联系快递拦截，无法直接取消，可拒收后退款"),
-                    ("已签收", "支持 7 天无理由退货或质量问题售后"),
-                    ("取消规则", "退款 1-3 工作日审核，3-7 工作日到账"),
-                ],
-                "complaint": [
-                    ("情绪分 < 3", "情绪安抚 → 记录诉求 → 推进处理流程"),
-                    ("情绪分 3-7", "优先安抚 → 给出解决方案 → 承诺跟进时效"),
-                    ("情绪分 ≥ 8", "立即升级人工 → 5 秒内接入 → 优先处理"),
-                    ("威胁/维权词", "Guard 拦截评估 + 触发 HITL 队列"),
-                    ("要求人工",   "直接路由人工，不再尝试机器人应答"),
-                ],
-                "safety": [
-                    ("提示词注入", "检测到 bypass/忽略指令 → 直接拒绝"),
-                    ("PII 脱敏",   "手机号、地址、邮箱自动脱敏存储"),
-                    ("高风险退款", "金额 > 5000 触发 HITL 人工复核"),
-                    ("低置信路由", "confidence < 0.6 → fallback + 人工兜底"),
-                ],
-            }.get(cat_key, [])
-            for title, desc in static:
-                kb_html += f"""
-                <div class="kb-item">
-                  <div class="kb-q">⚡ {title}</div>
-                  <div class="kb-a">{desc}</div>
+    # ── 空状态 ──────────────────────────
+    if not a:
+        empty_kb = """
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;
+                    padding:60px 20px;text-align:center;color:#30363d;margin-bottom:8px">
+          <div style="font-size:38px;margin-bottom:10px">🔗</div>
+          <div style="font-size:13px;color:#484f58">发送消息后，意图→实体→规则的推理链将在此实时呈现</div>
+        </div>"""
+        st.markdown(empty_kb, unsafe_allow_html=True)
+    else:
+        intent      = a["intent"]
+        entities    = a["entities"]
+        confidence  = a["confidence"]
+        rag_sources = a["rag_sources"]
+        blocked     = a.get("blocked", False)
+        ic = INTENT_COLOR.get(intent, "#6e7681")
+        ii = INTENT_ICON.get(intent, "❓")
+
+        # ── Pipeline 流：意图 → 实体 → 规则 ──
+        # 实体节点
+        ent_nodes = ""
+        if entities:
+            for k, v in entities.items():
+                lbl, col = ENTITY_LABELS.get(k, (k, "#8b949e"))
+                ent_nodes += f"""
+                <div style="background:#21262d;border:1px solid {col}44;border-radius:6px;
+                            padding:4px 10px;margin:3px 0;font-size:11px">
+                  <span style="color:{col};font-weight:600">{lbl}</span>
+                  <span style="color:#c9d1d9;margin-left:6px;font-family:monospace">{v}</span>
                 </div>"""
         else:
-            for doc in docs:
-                is_hit = doc["id"] in active_ids
-                hit_cls  = "active" if is_hit else ""
-                hit_ico  = "🔍 " if is_hit else ""
-                ans = doc["answer"][:230] + ("…" if len(doc["answer"]) > 230 else "")
-                kws = "".join(f'<span class="kw">{k}</span>' for k in doc.get("keywords",[])[:5])
-                kb_html += f"""
-                <div class="kb-item {hit_cls}">
-                  <div class="kb-id">{doc['id']}</div>
-                  <div class="kb-q">{hit_ico}{doc['question']}</div>
-                  <div class="kb-a">{ans}</div>
-                  <div class="kb-kws">{kws}</div>
-                </div>"""
+            ent_nodes = '<div style="color:#484f58;font-size:11px;padding:4px 0">未识别到实体</div>'
+
+        # 规则节点
+        rules = INTENT_RULES.get(intent, [])
+        rule_nodes = ""
+        for title, desc in rules:
+            rule_nodes += f"""
+            <div style="background:#21262d;border:1px solid #30363d;border-radius:6px;
+                        padding:5px 10px;margin:3px 0;font-size:11px">
+              <span style="color:#d29922;font-weight:600">{title}</span>
+              <div style="color:#8b949e;margin-top:2px">{desc}</div>
+            </div>"""
+
+        block_note = ""
+        if blocked:
+            block_note = '<div style="color:#f85149;font-size:11px;margin-top:4px">🛡️ 输入被护栏拦截，流程终止</div>'
+
+        pipeline_html = f"""
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;
+                    padding:14px 16px;margin-bottom:8px">
+
+          <!-- 三列 pipeline -->
+          <div style="display:flex;gap:8px;align-items:flex-start">
+
+            <!-- 意图 -->
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;color:#8b949e;font-weight:700;
+                          text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">意图</div>
+              <div style="background:#21262d;border:2px solid {ic};border-radius:8px;
+                          padding:8px 10px;text-align:center">
+                <div style="font-size:20px">{ii}</div>
+                <div style="font-size:12px;font-weight:700;color:{ic};margin-top:2px">{intent.upper()}</div>
+                <div style="font-size:10px;color:#6e7681;margin-top:2px">置信 {confidence:.2f}</div>
+              </div>
+            </div>
+
+            <!-- 箭头 -->
+            <div style="padding-top:36px;color:#30363d;font-size:18px">→</div>
+
+            <!-- 实体 -->
+            <div style="flex:1.3;min-width:0">
+              <div style="font-size:10px;color:#8b949e;font-weight:700;
+                          text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">实体</div>
+              {ent_nodes}
+            </div>
+
+            <!-- 箭头 -->
+            <div style="padding-top:36px;color:#30363d;font-size:18px">→</div>
+
+            <!-- 规则 -->
+            <div style="flex:1.6;min-width:0">
+              <div style="font-size:10px;color:#8b949e;font-weight:700;
+                          text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">适用规则</div>
+              {rule_nodes}
+            </div>
+          </div>
+          {block_note}
+        </div>"""
+        st.markdown(pipeline_html, unsafe_allow_html=True)
+
+    # ── 相关知识库（只显示当前意图的条目）──
+    st.markdown('<div class="sec">📚 相关知识条目</div>', unsafe_allow_html=True)
+    active_ids   = st.session_state.active_kb
+    cur_intent   = a["intent"] if a else None
+    cur_cat      = cur_intent if cur_intent in KB_CATS else None
+    cat_color    = KB_CATS.get(cur_cat, ("", "#388bfd"))[1] if cur_cat else "#388bfd"
+
+    # 筛选：只显示当前意图分类的 FAQ 条目
+    if cur_cat:
+        relevant_docs = [d for d in FAQ_DOCUMENTS if d["category"] == cur_cat]
+    else:
+        relevant_docs = []
+
+    kb_html = f'<div class="card" style="overflow-y:auto;max-height:calc(100vh - 480px)">'
+
+    if not relevant_docs and cur_cat:
+        # 该意图无 FAQ，使用静态规则卡片
+        static_map = {
+            "order":     [("待发货","可取消、可改址，实时生效"),
+                          ("已发货","无法取消，拒收后退款"),
+                          ("已签收","7天无理由或质量售后"),
+                          ("退款时效","审核1-3日 → 到账3-7日")],
+            "complaint": [("情绪分<3","安抚 → 记录 → 推进"),
+                          ("情绪分3-7","安抚 → 方案 → 跟进"),
+                          ("情绪分≥8","立即升级人工"),
+                          ("威胁词","Guard 拦截 + HITL"),
+                          ("要求人工","直接路由")],
+            "safety":    [("提示词注入","直接拒绝"),
+                          ("PII脱敏","自动脱敏存储"),
+                          ("高风险退款",">5000 HITL复核"),
+                          ("低置信路由","fallback+人工兜底")],
+        }
+        for title, desc in static_map.get(cur_cat, []):
+            kb_html += f"""
+            <div class="kb-item active">
+              <div class="kb-q">⚡ {title}</div>
+              <div class="kb-a">{desc}</div>
+            </div>"""
+    elif relevant_docs:
+        for doc in relevant_docs:
+            is_hit  = doc["id"] in active_ids
+            hit_cls = "active" if is_hit else ""
+            hit_ico = "🔍 " if is_hit else ""
+            ans = doc["answer"][:260] + ("…" if len(doc["answer"]) > 260 else "")
+            kws = "".join(f'<span class="kw">{k}</span>' for k in doc.get("keywords",[])[:5])
+            kb_html += f"""
+            <div class="kb-item {hit_cls}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="kb-id">{doc['id']}</div>
+                {"<span style='font-size:10px;color:#3fb950'>● RAG命中</span>" if is_hit else ""}
+              </div>
+              <div class="kb-q">{hit_ico}{doc['question']}</div>
+              <div class="kb-a">{ans}</div>
+              <div class="kb-kws">{kws}</div>
+            </div>"""
+    else:
+        kb_html += '<div style="color:#484f58;font-size:13px;text-align:center;padding:30px 0">发送消息后自动显示相关知识条目</div>'
 
     kb_html += "</div>"
     st.markdown(kb_html, unsafe_allow_html=True)
