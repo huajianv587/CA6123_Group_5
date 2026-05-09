@@ -68,6 +68,32 @@ class RouterAgent(BaseAgent):
                 "包裹",
                 "轨迹",
                 "查物流",
+                # English equivalents — the agent must trigger for bilingual demos
+                "shipment",
+                "package",
+                "parcel",
+                "delivery",
+                "delivered",
+                "tracking",
+                "tracking number",
+                "shipping",
+                "shipped",
+                "in transit",
+                "stuck",
+                "delay",
+                "delayed",
+                "not received",
+                "not arrived",
+                "hasn't arrived",
+                "has not arrived",
+                "no update",
+                "not updated",
+                "weather",
+                "typhoon",
+                "storm",
+                "snowstorm",
+                "blizzard",
+                "flood",
             ],
             IntentType.REFUND: [
                 "退款",
@@ -221,7 +247,14 @@ class RouterAgent(BaseAgent):
         lowered = text.lower()
         complaint_hits = ["投诉", "人工", "经理", "主管", "负责人", "真人", "12315", "曝光", "律师", "法院", "媒体"]
         refund_hits = ["退款", "退货", "退钱", "售后", "换货", "质量", "坏了", "破损", "不想要", "不喜欢", "七天"]
-        logistics_hits = ["物流", "快递", "发货", "配送", "签收", "运单", "到哪", "到哪里", "没收到", "没有收到", "包裹", "轨迹"]
+        logistics_hits = [
+            "物流", "快递", "发货", "配送", "签收", "运单", "到哪", "到哪里", "没收到", "没有收到", "包裹", "轨迹",
+            # English: ensure bilingual demo input routes to LogisticsAgent
+            "shipment", "package", "parcel", "delivery", "delivered", "tracking", "shipping", "shipped",
+            "in transit", "stuck", "delay", "delayed", "not received", "not arrived",
+            "hasn't arrived", "has not arrived", "no update", "not updated",
+            "weather", "typhoon", "storm", "snowstorm", "blizzard", "flood",
+        ]
         order_hits = ["订单", "下单", "购买", "取消", "改地址", "修改地址", "地址", "商品"]
 
         if any(hit.lower() in lowered for hit in complaint_hits):
