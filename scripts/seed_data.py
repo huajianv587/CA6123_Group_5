@@ -140,24 +140,50 @@ def seed_shipments(db, orders):
     for idx, order in enumerate(shippable[:100], start=1):
         code, name = CARRIERS[(idx - 1) % len(CARRIERS)]
         status = "signed" if order.status in {"signed", "completed"} else "in_transit"
+
+        # Inject a small set of "delayed" shipments so logistics-agent reasoning
+        # has real cases to exercise: ETA already in the past + last event in a
+        # weather-disrupted location. These three indices map deterministically
+        # to the same tracking numbers on every reseed.
+        is_delayed_demo = idx in (5, 17, 42)
+        if is_delayed_demo and status == "in_transit":
+            eta = now - timedelta(hours=72)  # 72h late vs threshold of 48h
+        else:
+            eta = now + timedelta(days=randint(1, 3))
+
         shipment = models.Shipment(
             order_id=order.id,
             tracking_number=f"{code}{1000000000 + idx}",
             carrier_code=code,
             carrier_name=name,
             status=status,
-            estimated_delivery=now + timedelta(days=randint(1, 3)),
+            estimated_delivery=eta,
             signed_by=order.receive_address["name"] if status == "signed" else None,
         )
         db.add(shipment)
         db.flush()
-        events = [
-            ("picked", "快递员已揽收", "发货仓"),
-            ("in_transit", "包裹正在转运中", "转运中心"),
-            (status, "包裹已签收" if status == "signed" else "包裹正在派送", order.receive_address["city"]),
-        ]
+
+        if is_delayed_demo and status == "in_transit":
+            # Stuck shipment in a weather-disrupted hub. The "Typhoon" keyword
+            # in the last event location is what triggers the weather tool.
+            events = [
+                ("picked", "快递员已揽收", "发货仓"),
+                ("in_transit", "包裹已抵达广州转运中心", "广州转运中心"),
+                ("in_transit", "包裹滞留 - 受台风天气影响 (Typhoon Mawar)",
+                 f"{order.receive_address['city']} - Typhoon disruption zone"),
+            ]
+            base_offset_hours = 96  # last event ~24h ago, oldest ~108h ago
+        else:
+            events = [
+                ("picked", "快递员已揽收", "发货仓"),
+                ("in_transit", "包裹正在转运中", "转运中心"),
+                (status, "包裹已签收" if status == "signed" else "包裹正在派送", order.receive_address["city"]),
+            ]
+            base_offset_hours = 6 * len(events)
+
         for offset, (event_status, detail, location) in enumerate(events):
-            db.add(models.ShipmentEvent(shipment_id=shipment.id, event_time=now - timedelta(hours=(len(events) - offset) * 6), status=event_status, detail=detail, location=location))
+            event_time = now - timedelta(hours=base_offset_hours - offset * (base_offset_hours // len(events)))
+            db.add(models.ShipmentEvent(shipment_id=shipment.id, event_time=event_time, status=event_status, detail=detail, location=location))
 
 
 def seed_refunds_complaints(db, orders):

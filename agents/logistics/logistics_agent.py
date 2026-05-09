@@ -217,18 +217,21 @@ class LogisticsAgent(BaseAgent):
         Replace the body with a real API call (e.g. OpenWeatherMap) if available.
         The reasoning layer treats this identically regardless of data source.
         """
-        status = shipment.get("status", "")
+        # Normalise status so we treat "in_transit", "In Transit", "InTransit" alike.
+        raw_status = (shipment.get("status") or "").strip().lower().replace(" ", "_")
         events = shipment.get("events", [])
         last_location = events[0].get("location", "") if events else ""
 
         # Heuristic simulation: treat known high-risk keywords as weather signal
-        weather_keywords = ["heavy rain", "typhoon", "snowstorm", "flood", "storm", "blizzard"]
+        weather_keywords = ["heavy rain", "typhoon", "snowstorm", "flood", "storm", "blizzard", "台风", "暴雨", "暴风雪"]
         for kw in weather_keywords:
             if kw.lower() in last_location.lower():
                 return True, f"Severe weather condition detected near {last_location}"
 
-        # Simulate stochastic disruption for stuck/delayed shipments (demo-friendly)
-        if status in ("stuck", "Delayed", "In Transit") and shipment.get("delay_hours", 0) > 24:
+        # Stochastic disruption for stuck/delayed shipments (demo-friendly).
+        # Use the agent-computed delay (passed via the payload) rather than a
+        # field that does not exist on raw shipment dicts.
+        if raw_status in ("stuck", "delayed", "in_transit") and shipment.get("delay_hours", 0) > 24:
             import random
             random.seed(hash(shipment.get("tracking_number", "")) % 1000)
             if random.random() < 0.35:
@@ -411,7 +414,7 @@ class LogisticsAgent(BaseAgent):
 
     def _payload(self, shipment) -> dict:
         """Convert ORM shipment object to plain dict."""
-        return {
+        payload = {
             "tracking_number": shipment.tracking_number,
             "carrier_name": shipment.carrier_name,
             "status": shipment.status,
@@ -429,6 +432,10 @@ class LogisticsAgent(BaseAgent):
                 for e in sorted(shipment.events, key=lambda x: x.event_time, reverse=True)
             ],
         }
+        # Pre-compute delay_hours so downstream tools (e.g. weather heuristic)
+        # can rely on it without re-implementing the calculation.
+        payload["delay_hours"] = self._compute_delay_hours(payload)
+        return payload
 
     def _call_external_api(self, tracking: str) -> Optional[dict]:
         """Simulated external carrier API. Replace with real HTTP call in production."""
