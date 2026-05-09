@@ -4,7 +4,7 @@
 三栏: 对话 Demo | 知识规则库 | 智能体评分 & 系统状态
 """
 from __future__ import annotations
-import io, sys, contextlib, time
+import io, sys, contextlib, time, html as _html
 sys.path.insert(0, ".")
 
 import streamlit as st
@@ -501,7 +501,7 @@ with col_kb:
           <div style="font-size:38px;margin-bottom:10px">🔗</div>
           <div style="font-size:13px;color:#484f58">发送消息后，意图→实体→规则的推理链将在此实时呈现</div>
         </div>"""
-        st.markdown(empty_kb, unsafe_allow_html=True)
+        st.html(empty_kb)  # st.html bypasses markdown parser; no indented-code-block risk
     else:
         intent      = a["intent"]
         entities    = a["entities"]
@@ -520,8 +520,8 @@ with col_kb:
                 ent_nodes += f"""
                 <div style="background:#21262d;border:1px solid {col}44;border-radius:6px;
                             padding:4px 10px;margin:3px 0;font-size:11px">
-                  <span style="color:{col};font-weight:600">{lbl}</span>
-                  <span style="color:#c9d1d9;margin-left:6px;font-family:monospace">{v}</span>
+                  <span style="color:{col};font-weight:600">{_html.escape(lbl)}</span>
+                  <span style="color:#c9d1d9;margin-left:6px;font-family:monospace">{_html.escape(str(v))}</span>
                 </div>"""
         else:
             ent_nodes = '<div style="color:#484f58;font-size:11px;padding:4px 0">未识别到实体</div>'
@@ -533,8 +533,8 @@ with col_kb:
             rule_nodes += f"""
             <div style="background:#21262d;border:1px solid #30363d;border-radius:6px;
                         padding:5px 10px;margin:3px 0;font-size:11px">
-              <span style="color:#d29922;font-weight:600">{title}</span>
-              <div style="color:#8b949e;margin-top:2px">{desc}</div>
+              <span style="color:#d29922;font-weight:600">{_html.escape(title)}</span>
+              <div style="color:#8b949e;margin-top:2px">{_html.escape(desc)}</div>
             </div>"""
 
         block_note = ""
@@ -582,7 +582,7 @@ with col_kb:
           </div>
           {block_note}
         </div>"""
-        st.markdown(pipeline_html, unsafe_allow_html=True)
+        st.html(pipeline_html)  # st.html bypasses markdown parser; no indented-code-block risk
 
     # ── 相关知识库（只显示当前意图的条目）──
     st.markdown('<div class="sec">📚 相关知识条目</div>', unsafe_allow_html=True)
@@ -619,26 +619,24 @@ with col_kb:
         for title, desc in static_map.get(cur_cat, []):
             kb_html += f"""
             <div class="kb-item active">
-              <div class="kb-q">⚡ {title}</div>
-              <div class="kb-a">{desc}</div>
+              <div class="kb-q">⚡ {_html.escape(title)}</div>
+              <div class="kb-a">{_html.escape(desc)}</div>
             </div>"""
     elif relevant_docs:
         for doc in relevant_docs:
-            is_hit  = doc["id"] in active_ids
-            hit_cls = "active" if is_hit else ""
-            hit_ico = "🔍 " if is_hit else ""
-            ans = doc["answer"][:260] + ("…" if len(doc["answer"]) > 260 else "")
-            kws = "".join(f'<span class="kw">{k}</span>' for k in doc.get("keywords",[])[:5])
+            is_hit   = doc["id"] in active_ids
+            hit_cls  = "active" if is_hit else ""
+            hit_ico  = "🔍 " if is_hit else ""
+            ans      = doc["answer"][:260] + ("…" if len(doc["answer"]) > 260 else "")
+            kws      = "".join(f'<span class="kw">{k}</span>' for k in doc.get("keywords",[])[:5])
+            rag_badge = "<span style='font-size:10px;color:#3fb950'>● RAG命中</span>" if is_hit else ""
             kb_html += f"""
-            <div class="kb-item {hit_cls}">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div class="kb-id">{doc['id']}</div>
-                {"<span style='font-size:10px;color:#3fb950'>● RAG命中</span>" if is_hit else ""}
-              </div>
-              <div class="kb-q">{hit_ico}{doc['question']}</div>
-              <div class="kb-a">{ans}</div>
-              <div class="kb-kws">{kws}</div>
-            </div>"""
+<div class="kb-item {hit_cls}">
+  <div style="display:flex;justify-content:space-between;align-items:center"><div class="kb-id">{doc['id']}</div>{rag_badge}</div>
+  <div class="kb-q">{hit_ico}{doc['question']}</div>
+  <div class="kb-a">{ans}</div>
+  <div class="kb-kws">{kws}</div>
+</div>"""
     else:
         kb_html += '<div style="color:#484f58;font-size:13px;text-align:center;padding:30px 0">发送消息后自动显示相关知识条目</div>'
 
